@@ -1,0 +1,2408 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Searcher</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/libphonenumber-js@1.11.4/bundle/libphonenumber-min.js" crossorigin="anonymous"></script>
+
+  <style>
+    :root {
+      --bg: #ffffff;
+      --ink: #0a0a0a;
+      --ink-soft: #2a2a2a;
+      --ink-mute: #6b7280;
+      --ink-faint: #d4d6db;
+      --rule: #e5e7eb;
+      --blue: #2563ff;
+      --blue-soft: #e8efff;
+      --blue-deep: #0040d6;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'Geist', ui-sans-serif, system-ui, sans-serif;
+      cursor: none;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background:
+        radial-gradient(ellipse 80% 60% at 50% 0%, rgba(37,99,255,0.04) 0%, transparent 70%),
+        linear-gradient(180deg, #ffffff 0%, #fafbfc 100%);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image: radial-gradient(circle, rgba(10,10,10,0.08) 1px, transparent 1px);
+      background-size: 28px 28px;
+      z-index: 1;
+      mask-image: radial-gradient(ellipse at center, black 20%, transparent 75%);
+      -webkit-mask-image: radial-gradient(ellipse at center, black 20%, transparent 75%);
+      opacity: 0.6;
+    }
+
+    #root { position: relative; height: 100%; z-index: 3; }
+
+    /* ── Shared layout ── */
+    .word-field {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 2;
+    }
+    .word {
+      position: absolute;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--ink);
+      white-space: nowrap;
+      user-select: none;
+      will-change: transform, opacity;
+    }
+
+    .magnifier {
+      position: fixed;
+      pointer-events: none;
+      top: 0; left: 0;
+      z-index: 0;
+      will-change: transform;
+      filter: blur(18px) opacity(0.75);
+    }
+
+    .cursor-dot {
+      position: fixed;
+      pointer-events: none;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--ink);
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+    }
+    .cursor-ring {
+      position: fixed;
+      pointer-events: none;
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      border: 1.5px solid var(--blue);
+      z-index: 9998;
+      transform: translate(-50%, -50%);
+      transition: width 0.2s ease, height 0.2s ease, background 0.2s ease;
+    }
+    .cursor-ring.hover { width: 44px; height: 44px; background: rgba(37,99,255,0.06); }
+
+    .corner {
+      position: fixed;
+      z-index: 6;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--ink-mute);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .corner.tl { top: 24px; left: 28px; }
+    .corner.tr { top: 24px; right: 28px; }
+    .corner.bl { bottom: 24px; left: 28px; }
+    .corner.br { bottom: 24px; right: 28px; }
+
+    .logo {
+      width: 26px; height: 26px;
+      border-radius: 7px;
+      background: var(--ink);
+      color: white;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 13px;
+      font-family: 'Geist', sans-serif;
+    }
+    .brand-name {
+      font-family: 'Geist', sans-serif;
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--ink);
+      letter-spacing: -0.01em;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--blue-soft);
+      color: var(--blue-deep);
+      font-size: 10.5px;
+      font-weight: 500;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .badge .live {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--blue);
+      animation: pulse 2s ease-out infinite;
+    }
+    @keyframes pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(37,99,255,0.55); }
+      70%  { box-shadow: 0 0 0 10px rgba(37,99,255,0); }
+      100% { box-shadow: 0 0 0 0 rgba(37,99,255,0); }
+    }
+
+    .eyebrow {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--ink-mute);
+      margin-bottom: 22px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .eyebrow .pulse {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--blue);
+      animation: pulse 2s ease-out infinite;
+    }
+
+    /* ── Search Page ── */
+    .stage {
+      position: relative;
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100%;
+      padding: 48px 24px;
+      gap: 40px;
+    }
+    .masthead {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      line-height: 1;
+    }
+    .wordmark {
+      font-family: 'Geist', sans-serif;
+      font-weight: 600;
+      font-size: clamp(64px, 10vw, 132px);
+      letter-spacing: -0.045em;
+      color: var(--ink);
+      line-height: 0.95;
+    }
+    .wordmark .accent {
+      font-family: 'Instrument Serif', serif;
+      font-style: italic;
+      font-weight: 400;
+      color: var(--blue);
+      letter-spacing: -0.02em;
+    }
+    .wordmark .dot { color: var(--blue); }
+    .tag {
+      font-size: 15px;
+      color: var(--ink-mute);
+      margin-top: 18px;
+      max-width: 460px;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .search-wrap {
+      position: relative;
+      width: min(640px, 92vw);
+    }
+    .search {
+      width: 100%;
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--ink-faint);
+      border-radius: 14px;
+      padding: 20px 96px 20px 56px;
+      font-family: 'Geist', sans-serif;
+      font-size: 17px;
+      color: var(--ink);
+      outline: none;
+      box-shadow: 0 1px 2px rgba(10,10,10,0.04), 0 8px 28px rgba(10,10,10,0.06);
+      transition: box-shadow 0.18s, border-color 0.18s;
+      cursor: none;
+    }
+    .search::placeholder { color: var(--ink-mute); }
+    .search:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 4px var(--blue-soft), 0 8px 32px rgba(37,99,255,0.12);
+    }
+    .search-icon {
+      position: absolute;
+      left: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--ink-mute);
+      pointer-events: none;
+      transition: color 0.18s;
+    }
+    .search-wrap:focus-within .search-icon { color: var(--blue); }
+    .kbd {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10.5px;
+      color: var(--ink-mute);
+      border: 1px solid var(--ink-faint);
+      border-bottom-width: 2px;
+      border-radius: 6px;
+      padding: 4px 8px;
+      pointer-events: none;
+      background: #fff;
+    }
+
+    .meta-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      color: var(--ink-mute);
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 11px;
+      border: 1px solid var(--ink-faint);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.8);
+      transition: border-color 0.18s, color 0.18s, background 0.18s;
+      cursor: none;
+    }
+    .chip:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-soft); }
+
+    .settings-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--ink-mute);
+      background: none;
+      border: 1px solid var(--ink-faint);
+      border-radius: 8px;
+      padding: 5px 10px;
+      cursor: none;
+      transition: color 0.18s, border-color 0.18s;
+    }
+    .settings-btn:hover { color: var(--blue); border-color: var(--blue); }
+
+    /* ── Results Page ── */
+    .results-root {
+      position: relative;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .results-topbar {
+      position: relative;
+      z-index: 6;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 24px 16px 120px;
+      border-bottom: 1px solid var(--rule);
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(12px);
+      flex-shrink: 0;
+    }
+    .results-search-wrap {
+      position: relative;
+      flex: 1;
+      max-width: 600px;
+    }
+    .results-search-wrap .search-icon {
+      left: 14px;
+    }
+    .results-search {
+      width: 100%;
+      background: rgba(255,255,255,0.9);
+      border: 1px solid var(--ink-faint);
+      border-radius: 10px;
+      padding: 11px 60px 11px 40px;
+      font-family: 'Geist', sans-serif;
+      font-size: 15px;
+      color: var(--ink);
+      outline: none;
+      transition: border-color 0.18s, box-shadow 0.18s;
+      cursor: none;
+    }
+    .results-search::placeholder { color: var(--ink-mute); }
+    .results-search:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px var(--blue-soft);
+    }
+    .results-search-wrap .kbd { right: 10px; }
+
+    .logo-btn {
+      background: none;
+      border: none;
+      cursor: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0;
+    }
+    .logo-btn:hover .logo { background: var(--blue); }
+
+    .results-body {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 28px 24px 48px;
+      position: relative;
+      z-index: 5;
+      max-width: 800px;
+      width: 100%;
+      margin: 0 auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--ink-faint) transparent;
+    }
+    .results-body::-webkit-scrollbar { width: 6px; }
+    .results-body::-webkit-scrollbar-thumb { background: var(--ink-faint); border-radius: 3px; }
+
+    .results-meta {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .results-count {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--ink-mute);
+    }
+    .results-count b { color: var(--ink); }
+    .loading-pulse { animation: textPulse 1.2s ease-in-out infinite; }
+    @keyframes textPulse { 0%,100% { opacity: 0.5 } 50% { opacity: 1 } }
+
+    .source-chips {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .source-chip {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10.5px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: var(--blue-soft);
+      color: var(--blue-deep);
+      font-weight: 500;
+    }
+
+    .results-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .result-card {
+      display: block;
+      background: rgba(255,255,255,0.85);
+      border: 1px solid var(--rule);
+      border-radius: 12px;
+      padding: 18px 20px;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.18s, box-shadow 0.18s, transform 0.18s;
+      cursor: none;
+    }
+    .result-card:hover {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px var(--blue-soft), 0 4px 16px rgba(37,99,255,0.08);
+      transform: translateY(-1px);
+    }
+    .result-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .result-favicon { width: 16px; height: 16px; border-radius: 3px; flex-shrink: 0; }
+    .result-source {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 500;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: var(--blue-soft);
+      color: var(--blue-deep);
+      flex-shrink: 0;
+    }
+    .result-url {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--ink-mute);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .result-title {
+      font-family: 'Geist', sans-serif;
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--ink);
+      margin-bottom: 6px;
+      line-height: 1.3;
+    }
+    .result-card:hover .result-title { color: var(--blue); }
+    .result-description {
+      font-size: 13.5px;
+      color: var(--ink-mute);
+      line-height: 1.55;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .result-skeleton {
+      height: 100px;
+      border-radius: 12px;
+      background: linear-gradient(90deg, var(--bg) 25%, rgba(37,99,255,0.04) 50%, var(--bg) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+      border: 1px solid var(--rule);
+    }
+    @keyframes shimmer { 0% { background-position: 200% 0 } 100% { background-position: -200% 0 } }
+
+    .results-error {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 20px;
+      background: rgba(255,59,48,0.05);
+      border: 1px solid rgba(255,59,48,0.2);
+      border-radius: 12px;
+      margin-top: 20px;
+    }
+    .error-icon { font-size: 22px; color: #ff3b30; line-height: 1; }
+    .error-title { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+    .error-desc { font-size: 13px; color: var(--ink-mute); white-space: pre-wrap; }
+
+    .results-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 60px 24px;
+      gap: 12px;
+      color: var(--ink-mute);
+    }
+    .empty-icon { opacity: 0.25; margin-bottom: 8px; }
+    .empty-title { font-size: 18px; font-weight: 600; color: var(--ink); }
+    .empty-desc { font-size: 14px; max-width: 360px; line-height: 1.55; }
+    .btn-configure {
+      margin-top: 12px;
+      padding: 10px 20px;
+      border-radius: 10px;
+      background: var(--blue);
+      color: white;
+      font-family: 'Geist', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      border: none;
+      cursor: none;
+      transition: background 0.18s;
+    }
+    .btn-configure:hover { background: var(--blue-deep); }
+
+    /* ── Settings Modal ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(10,10,10,0.45);
+      backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .modal {
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.22);
+      width: min(580px, 100%);
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border: 1px solid var(--rule);
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--rule);
+      font-family: 'Geist', sans-serif;
+      font-size: 16px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      cursor: none;
+      color: var(--ink-mute);
+      font-size: 18px;
+      width: 28px; height: 28px;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s;
+    }
+    .modal-close:hover { background: var(--rule); color: var(--ink); }
+
+    .modal-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      scrollbar-width: thin;
+    }
+    .modal-section { display: flex; flex-direction: column; gap: 12px; }
+    .modal-section-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-mute);
+      padding-bottom: 4px;
+      border-bottom: 1px solid var(--rule);
+    }
+    .modal-field { display: flex; flex-direction: column; gap: 6px; }
+    .modal-field label {
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--ink-soft);
+    }
+    .modal-field input, .modal-field select {
+      padding: 10px 12px;
+      border: 1px solid var(--ink-faint);
+      border-radius: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--ink);
+      background: #fff;
+      outline: none;
+      transition: border-color 0.18s;
+      cursor: none;
+    }
+    .modal-field input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-soft); }
+    .modal-link {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--blue);
+      text-decoration: none;
+      align-self: flex-start;
+    }
+    .modal-link:hover { text-decoration: underline; }
+
+    .api-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--blue-soft);
+      border-radius: 8px;
+      border: 1px solid rgba(37,99,255,0.12);
+    }
+    .api-name {
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--blue-deep);
+      flex-shrink: 0;
+      min-width: 80px;
+    }
+    .api-url {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--ink-mute);
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .api-remove {
+      background: none;
+      border: none;
+      cursor: none;
+      color: var(--ink-mute);
+      font-size: 14px;
+      width: 24px; height: 24px;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.15s, color 0.15s;
+    }
+    .api-remove:hover { background: rgba(255,59,48,0.1); color: #ff3b30; }
+
+    .api-form {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 14px;
+      background: rgba(0,0,0,0.02);
+      border-radius: 10px;
+      border: 1px dashed var(--ink-faint);
+    }
+    .api-form input {
+      padding: 9px 11px;
+      border: 1px solid var(--ink-faint);
+      border-radius: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px;
+      color: var(--ink);
+      background: #fff;
+      outline: none;
+      cursor: none;
+    }
+    .api-form input:focus { border-color: var(--blue); }
+    .api-form-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .api-form-actions { display: flex; gap: 8px; }
+    .api-form-actions button {
+      flex: 1;
+      padding: 9px;
+      border-radius: 8px;
+      border: none;
+      font-family: 'Geist', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: none;
+      transition: background 0.15s;
+    }
+    .api-form-actions button:first-child { background: var(--blue); color: #fff; }
+    .api-form-actions button:first-child:hover { background: var(--blue-deep); }
+    .api-form-actions button.secondary { background: var(--rule); color: var(--ink-soft); }
+    .api-form-actions button.secondary:hover { background: var(--ink-faint); }
+
+    .add-api-btn {
+      align-self: flex-start;
+      background: none;
+      border: 1px dashed var(--ink-faint);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--ink-mute);
+      cursor: none;
+      transition: color 0.18s, border-color 0.18s;
+    }
+    .add-api-btn:hover { color: var(--blue); border-color: var(--blue); }
+
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--rule);
+      display: flex;
+      justify-content: flex-end;
+      flex-shrink: 0;
+    }
+    .btn-save {
+      padding: 10px 24px;
+      border-radius: 10px;
+      background: var(--ink);
+      color: #fff;
+      font-family: 'Geist', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      border: none;
+      cursor: none;
+      transition: background 0.15s;
+    }
+    .btn-save:hover { background: var(--blue); }
+
+    .api-hint {
+      font-size: 12px;
+      color: var(--ink-mute);
+      line-height: 1.55;
+      padding: 10px 12px;
+      background: rgba(37,99,255,0.04);
+      border-radius: 8px;
+      border-left: 3px solid var(--blue);
+    }
+
+    /* ── Phone card ── */
+    .phone-card {
+      border-radius: 14px;
+      border: 1.5px solid var(--rule);
+      background: rgba(255,255,255,0.9);
+      padding: 20px 22px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .phone-card.valid   { border-color: #16a34a; background: rgba(22,163,74,0.04); }
+    .phone-card.invalid { border-color: #dc2626; background: rgba(220,38,38,0.04); }
+
+    .phone-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .phone-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-mute);
+      display: flex; align-items: center; gap: 7px;
+    }
+    .phone-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 4px 10px;
+      border-radius: 999px;
+    }
+    .phone-badge.valid   { background: rgba(22,163,74,0.12); color: #16a34a; }
+    .phone-badge.invalid { background: rgba(220,38,38,0.10); color: #dc2626; }
+
+    .phone-number-display {
+      font-family: 'Geist', sans-serif;
+      font-size: 26px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      line-height: 1;
+    }
+    .phone-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .phone-meta-item {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      padding: 4px 10px;
+      border-radius: 8px;
+      background: rgba(0,0,0,0.04);
+      color: var(--ink-soft);
+      display: flex; align-items: center; gap: 5px;
+    }
+    .phone-invalid-msg {
+      font-size: 13.5px;
+      color: #dc2626;
+      opacity: 0.85;
+    }
+
+    /* ── Nav buttons ── */
+    .nav-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--ink-mute);
+      background: none;
+      border: 1px solid var(--ink-faint);
+      border-radius: 8px;
+      padding: 5px 10px;
+      cursor: none;
+      transition: color 0.18s, border-color 0.18s, background 0.18s;
+      white-space: nowrap;
+    }
+    .nav-btn:hover { color: var(--blue); border-color: var(--blue); background: var(--blue-soft); }
+    .nav-btn.home:hover { color: var(--ink); border-color: var(--ink); background: rgba(10,10,10,0.05); }
+
+    /* ── Pricing Modal ── */
+    .pricing-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      background: rgba(10,10,10,0.5);
+      backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .pricing-modal {
+      background: #fff;
+      border-radius: 22px;
+      box-shadow: 0 32px 100px rgba(0,0,0,0.25);
+      width: min(860px, 100%);
+      max-height: 92vh;
+      overflow-y: auto;
+      border: 1px solid var(--rule);
+      padding: 40px;
+      scrollbar-width: thin;
+    }
+    .pricing-header {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+    .pricing-eyebrow {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--blue);
+      margin-bottom: 10px;
+    }
+    .pricing-title {
+      font-family: 'Geist', sans-serif;
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--ink);
+      margin-bottom: 8px;
+    }
+    .pricing-subtitle {
+      font-size: 15px;
+      color: var(--ink-mute);
+    }
+    .pricing-close {
+      position: absolute;
+      top: 20px; right: 24px;
+      background: none;
+      border: none;
+      cursor: none;
+      color: var(--ink-mute);
+      font-size: 20px;
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s;
+    }
+    .pricing-close:hover { background: var(--rule); color: var(--ink); }
+
+    .pricing-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 640px) { .pricing-cards { grid-template-columns: 1fr; } }
+
+    .pricing-card {
+      border: 1.5px solid var(--rule);
+      border-radius: 16px;
+      padding: 28px 26px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      position: relative;
+      transition: transform 0.22s cubic-bezier(.22,.68,0,1.2), box-shadow 0.22s ease, border-color 0.22s ease;
+      cursor: none;
+      background: #fff;
+    }
+    .pricing-card:hover {
+      transform: translateY(-6px) scale(1.012);
+      box-shadow: 0 20px 60px rgba(37,99,255,0.12), 0 4px 16px rgba(0,0,0,0.06);
+      border-color: var(--blue);
+    }
+    .pricing-card.popular {
+      border-color: var(--blue);
+      background: linear-gradient(135deg, rgba(37,99,255,0.03) 0%, #fff 60%);
+    }
+    .pricing-card.popular:hover {
+      transform: translateY(-8px) scale(1.016);
+      box-shadow: 0 28px 72px rgba(37,99,255,0.18), 0 4px 20px rgba(0,0,0,0.08);
+    }
+
+    .popular-badge {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--blue);
+      color: #fff;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 4px 14px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    .plan-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-mute);
+    }
+    .plan-price {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+      line-height: 1;
+    }
+    .plan-amount {
+      font-family: 'Geist', sans-serif;
+      font-size: 44px;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      color: var(--ink);
+    }
+    .plan-currency {
+      font-family: 'Geist', sans-serif;
+      font-size: 20px;
+      font-weight: 500;
+      color: var(--ink-mute);
+      align-self: flex-start;
+      margin-top: 8px;
+    }
+    .plan-period {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--ink-mute);
+    }
+    .plan-desc {
+      font-size: 13.5px;
+      color: var(--ink-mute);
+      line-height: 1.5;
+    }
+    .plan-features {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      flex: 1;
+    }
+    .plan-feature {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      font-size: 13.5px;
+      color: var(--ink-soft);
+      line-height: 1.4;
+    }
+    .plan-feature .check {
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: rgba(22,163,74,0.12);
+      color: #16a34a;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 9px;
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .pricing-card.popular .plan-feature .check {
+      background: var(--blue-soft);
+      color: var(--blue);
+    }
+    .plan-cta {
+      width: 100%;
+      padding: 13px;
+      border-radius: 11px;
+      border: none;
+      font-family: 'Geist', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: none;
+      transition: background 0.18s, transform 0.12s;
+    }
+    .plan-cta:hover { transform: scale(1.02); }
+    .plan-cta.free { background: rgba(0,0,0,0.06); color: var(--ink); }
+    .plan-cta.free:hover { background: rgba(0,0,0,0.1); }
+    .plan-cta.paid { background: var(--blue); color: #fff; }
+    .plan-cta.paid:hover { background: var(--blue-deep); }
+
+    .pricing-divider {
+      margin: 28px 0 20px;
+      text-align: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--ink-mute);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .pricing-divider::before, .pricing-divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--rule);
+    }
+
+    /* ── IP card ── */
+    .ip-card {
+      border-radius: 14px;
+      border: 1.5px solid var(--blue);
+      background: var(--blue-soft);
+      padding: 20px 22px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .ip-card.loading { opacity: 0.7; }
+    .ip-card.error { border-color: #dc2626; background: rgba(220,38,38,0.04); }
+    .ip-address {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--ink);
+    }
+    .ip-location {
+      font-family: 'Geist', sans-serif;
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ip-flag { font-size: 22px; line-height: 1; }
+    .ip-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .ip-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 8px;
+      background: rgba(99,102,241,0.09);
+      color: var(--blue);
+      font-weight: 500;
+    }
+
+    /* ── Built-in sources banner ── */
+    .builtin-banner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+    .builtin-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10.5px;
+      color: var(--ink-mute);
+    }
+    .builtin-chip {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10.5px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      border: 1px solid var(--ink-faint);
+      color: var(--ink-mute);
+      display: flex; align-items: center; gap: 5px;
+    }
+    .builtin-chip .dot-green { width: 5px; height: 5px; border-radius: 50%; background: #16a34a; }
+
+    @keyframes drift-0 { from { translate: 0 0 } to { translate: 8px -6px } }
+    @keyframes drift-1 { from { translate: 0 0 } to { translate: -10px 4px } }
+    @keyframes drift-2 { from { translate: 0 0 } to { translate: 6px 8px } }
+    @keyframes drift-3 { from { translate: 0 0 } to { translate: -7px -9px } }
+
+    @media (max-width: 640px) {
+      .corner.tr, .corner.bl { display: none; }
+      .results-topbar { padding-left: 80px; }
+      .api-form-row { grid-template-columns: 1fr; }
+    }
+    /* ── Auth page ── */
+    .auth-overlay {
+      position: fixed; inset: 0; z-index: 200;
+      display: flex; align-items: center; justify-content: center;
+      background:
+        radial-gradient(ellipse 80% 60% at 50% 0%, rgba(37,99,255,0.06) 0%, transparent 70%),
+        linear-gradient(180deg, #ffffff 0%, #fafbfc 100%);
+    }
+    .auth-card {
+      width: 100%; max-width: 400px;
+      background: rgba(255,255,255,0.92);
+      border: 1.5px solid var(--rule);
+      border-radius: 20px;
+      padding: 40px 36px 36px;
+      display: flex; flex-direction: column; gap: 28px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.08);
+      backdrop-filter: blur(12px);
+    }
+    .auth-logo {
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+    }
+    .auth-logo-mark {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: var(--ink); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Geist', sans-serif; font-size: 22px; font-weight: 700;
+    }
+    .auth-logo-name {
+      font-family: 'Geist', sans-serif; font-size: 20px; font-weight: 700;
+      letter-spacing: -0.03em; color: var(--ink);
+    }
+    .auth-tabs {
+      display: flex; gap: 4px;
+      background: var(--rule); border-radius: 10px; padding: 3px;
+    }
+    .auth-tab {
+      flex: 1; padding: 8px; border: none; background: transparent;
+      border-radius: 8px; font-family: 'Geist', sans-serif; font-size: 13px;
+      font-weight: 500; color: var(--ink-mute); cursor: pointer; transition: all 0.15s;
+    }
+    .auth-tab.active {
+      background: #fff; color: var(--ink);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+    .auth-form { display: flex; flex-direction: column; gap: 14px; }
+    .auth-field { display: flex; flex-direction: column; gap: 6px; }
+    .auth-field label {
+      font-family: 'JetBrains Mono', monospace; font-size: 11px;
+      font-weight: 500; color: var(--ink-mute); text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .auth-input {
+      width: 100%; padding: 11px 14px;
+      border: 1.5px solid var(--rule); border-radius: 10px;
+      font-family: 'Geist', sans-serif; font-size: 14px; color: var(--ink);
+      background: #fff; outline: none; transition: border-color 0.15s;
+    }
+    .auth-input:focus { border-color: var(--blue); }
+    .auth-submit {
+      width: 100%; padding: 13px;
+      background: var(--ink); color: #fff; border: none; border-radius: 10px;
+      font-family: 'Geist', sans-serif; font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: opacity 0.15s; margin-top: 4px;
+    }
+    .auth-submit:hover { opacity: 0.85; }
+    .auth-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+    .auth-error {
+      padding: 10px 14px; border-radius: 9px;
+      background: rgba(220,38,38,0.07); border: 1px solid rgba(220,38,38,0.2);
+      color: #b91c1c; font-size: 13px; font-family: 'Geist', sans-serif;
+    }
+    /* ── Theme Modal ── */
+    .theme-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 6px;
+    }
+    .theme-card {
+      border: 2px solid var(--rule); border-radius: 12px;
+      padding: 13px 11px; cursor: pointer; transition: all 0.15s;
+      display: flex; flex-direction: column; gap: 9px; background: var(--bg);
+    }
+    .theme-card:hover { border-color: var(--blue); }
+    .theme-card.selected { border-color: var(--blue); background: var(--blue-soft); }
+    .theme-swatches { display: flex; gap: 5px; }
+    .theme-swatch {
+      width: 18px; height: 18px; border-radius: 50%;
+      border: 1.5px solid rgba(128,128,128,0.2);
+    }
+    .theme-card-name {
+      font-family: 'Geist', sans-serif; font-size: 12px; font-weight: 600; color: var(--ink);
+    }
+    .theme-custom-section {
+      border-top: 1.5px solid var(--rule); padding-top: 16px; margin-top: 8px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .theme-section-label {
+      font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-mute); margin-bottom: 2px;
+    }
+    .theme-color-row {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .theme-color-row label {
+      font-family: 'Geist', sans-serif; font-size: 13px; color: var(--ink); min-width: 70px;
+    }
+    .theme-color-input {
+      width: 34px; height: 34px; border: none; border-radius: 8px;
+      cursor: pointer; padding: 2px; background: var(--rule); flex-shrink: 0;
+    }
+    .theme-hex {
+      font-family: 'JetBrains Mono', monospace; font-size: 12px;
+      width: 88px; padding: 6px 9px; border: 1.5px solid var(--rule);
+      border-radius: 8px; background: var(--bg); color: var(--ink); outline: none;
+    }
+    .theme-hex:focus { border-color: var(--blue); }
+    .theme-select {
+      flex: 1; padding: 8px 10px; border: 1.5px solid var(--rule);
+      border-radius: 8px; font-family: 'Geist', sans-serif; font-size: 13px;
+      background: var(--bg); color: var(--ink); cursor: pointer; outline: none;
+    }
+    .theme-select:focus { border-color: var(--blue); }
+    /* logout button */
+    .nav-btn.logout { color: #b91c1c; }
+    .nav-btn.logout:hover { border-color: #b91c1c; background: rgba(220,38,38,0.07); color: #b91c1c; }
+    /* apparence button accent */
+    .nav-btn.apparence:hover { color: var(--blue); border-color: var(--blue); background: var(--blue-soft); }
+    /* user chip in nav */
+    .user-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-family: 'JetBrains Mono', monospace; font-size: 11px;
+      color: var(--ink-mute); white-space: nowrap;
+    }
+    .user-avatar {
+      width: 20px; height: 20px; border-radius: 50%;
+      background: var(--blue); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useMemo, useCallback } = React;
+
+    // ── Config ────────────────────────────────────────────────────────────────
+    const CONFIG_KEY = 'searcher_v1_config';
+    const DEFAULT_CONFIG = {
+      googleApiKey: '',
+      googleCx: '',
+      customApis: [],
+      followSpeed: 0.12,
+    };
+
+    function loadConfig() {
+      try {
+        const raw = localStorage.getItem(CONFIG_KEY);
+        return raw ? { ...DEFAULT_CONFIG, ...JSON.parse(raw) } : { ...DEFAULT_CONFIG };
+      } catch { return { ...DEFAULT_CONFIG }; }
+    }
+    function saveConfig(cfg) {
+      try { localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg)); } catch {}
+    }
+
+    // ── Phone validation ──────────────────────────────────────────────────────
+    const PHONE_TYPE_FR = {
+      MOBILE: 'Mobile', FIXED_LINE: 'Fixe', FIXED_LINE_OR_MOBILE: 'Fixe / Mobile',
+      TOLL_FREE: 'Numéro gratuit', PREMIUM_RATE: 'Surtaxé', VOIP: 'VoIP',
+      PERSONAL_NUMBER: 'Personnel', PAGER: 'Pager', UAN: 'UAN',
+      SHARED_COST: 'Coût partagé',
+    };
+
+    function countryFlag(code) {
+      if (!code || code.length !== 2) return '';
+      return Array.from(code.toUpperCase()).map(c => String.fromCodePoint(c.charCodeAt(0) + 127397)).join('');
+    }
+
+    function looksLikePhone(q) {
+      const cleaned = q.trim().replace(/[\s\-\.\(\)]/g, '');
+      return /^[\+\d]{7,}$/.test(cleaned);
+    }
+
+    function getCountryName(code) {
+      if (!code) return null;
+      try { return new Intl.DisplayNames(['fr'], { type: 'region' }).of(code); }
+      catch { return code; }
+    }
+
+    // Estimate French carrier from number prefix (approximate)
+    function guessCarrier(national, country) {
+      if (country !== 'FR') return null;
+      const digits = national.replace(/\D/g, '');
+      if (digits.length < 4) return null;
+      const p = parseInt(digits.substring(0, 4));
+      // Free Mobile: 0650-0659, 0750-0759
+      if ((p >= 650 && p <= 659) || (p >= 750 && p <= 759)) return 'Free Mobile';
+      // Orange: 0600-0609, 0690-0699, 0760-0769
+      if ((p >= 600 && p <= 609) || (p >= 690 && p <= 699) || (p >= 760 && p <= 769)) return 'Orange';
+      // SFR: 0610-0619, 0670-0679, 0770-0779
+      if ((p >= 610 && p <= 619) || (p >= 670 && p <= 679) || (p >= 770 && p <= 779)) return 'SFR';
+      // Bouygues: 0620-0629, 0660-0669, 0780-0789
+      if ((p >= 620 && p <= 629) || (p >= 660 && p <= 669) || (p >= 780 && p <= 789)) return 'Bouygues';
+      // Numéros fixes
+      if (digits.startsWith('01') || digits.startsWith('02') || digits.startsWith('03') ||
+          digits.startsWith('04') || digits.startsWith('05')) return 'Fixe';
+      return null;
+    }
+
+    function validatePhone(q) {
+      const lib = window.libphonenumber;
+      if (!lib) {
+        const cleaned = q.replace(/[\s\-\.\(\)]/g, '');
+        const valid = /^\+?[1-9]\d{6,14}$/.test(cleaned);
+        return { input: q, valid, formatted: q, national: q, country: null, countryName: null, type: null, carrier: null };
+      }
+      try {
+        const parsed = lib.parsePhoneNumber(q, 'FR');
+        const country = parsed.country;
+        const national = parsed.formatNational();
+        return {
+          input: q,
+          valid: parsed.isValid(),
+          formatted: parsed.formatInternational(),
+          national,
+          country,
+          countryName: getCountryName(country),
+          type: parsed.getType(),
+          carrier: guessCarrier(national, country),
+        };
+      } catch {
+        return { input: q, valid: false, formatted: q, national: q, country: null, countryName: null, type: null, carrier: null };
+      }
+    }
+
+    // ── IP geolocation (ipinfo.io) ────────────────────────────────────────────
+    function looksLikeIP(q) {
+      const s = q.trim();
+      if (/^(\d{1,3}\.){3}\d{1,3}$/.test(s)) return true;
+      if (/^[0-9a-fA-F:]{2,}:[0-9a-fA-F:]+$/.test(s)) return true;
+      return false;
+    }
+
+    async function geolocateIP(ip) {
+      const res = await fetch(`https://ipinfo.io/${encodeURIComponent(ip.trim())}/json`);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message || 'IP introuvable');
+      if (data.bogon) throw new Error('Adresse IP privée / réservée');
+      return data;
+    }
+
+    // ── Wikipedia search ──────────────────────────────────────────────────────
+    async function searchWikipedia(query) {
+      // Search on both FR and EN Wikipedia concurrently
+      const search = async (lang) => {
+        const url = `https://${lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&origin=*&srlimit=5&srprop=snippet`;
+        const res = await fetch(url);
+        const data = await res.json();
+        return (data.query?.search || []).map(item => ({
+          id: `wiki-${lang}-${item.pageid}`,
+          title: item.title,
+          description: item.snippet.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"'),
+          url: `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(item.title.replace(/ /g, '_'))}`,
+          source: lang === 'fr' ? 'Wikipedia FR' : 'Wikipedia EN',
+          favicon: `https://${lang}.wikipedia.org/favicon.ico`,
+        }));
+      };
+      const [fr, en] = await Promise.allSettled([search('fr'), search('en')]);
+      const frResults = fr.status === 'fulfilled' ? fr.value : [];
+      const enResults = en.status === 'fulfilled' ? en.value : [];
+      // Merge, FR first, deduplicate by title
+      const seen = new Set(frResults.map(r => r.title.toLowerCase()));
+      const deduped = enResults.filter(r => !seen.has(r.title.toLowerCase()));
+      return [...frResults, ...deduped].slice(0, 8);
+    }
+
+    // ── Search logic ──────────────────────────────────────────────────────────
+    async function searchGoogle(query, apiKey, cx) {
+      const url = `https://www.googleapis.com/customsearch/v1?key=${encodeURIComponent(apiKey)}&cx=${encodeURIComponent(cx)}&q=${encodeURIComponent(query)}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || `Erreur ${res.status}`);
+      return (data.items || []).map(item => ({
+        id: item.link,
+        title: item.title,
+        description: item.snippet,
+        url: item.link,
+        source: 'Google',
+        favicon: `https://www.google.com/s2/favicons?domain=${new URL(item.link).hostname}&sz=32`,
+      }));
+    }
+
+    async function searchCustomApi(query, api) {
+      const url = api.url.replace(/\{query\}/g, encodeURIComponent(query));
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Erreur ${res.status}`);
+      let data = await res.json();
+      if (api.resultsPath) {
+        for (const key of api.resultsPath.split('.')) data = data?.[key];
+      }
+      if (!Array.isArray(data)) return [];
+      return data.map((item, i) => ({
+        id: `${api.name}-${i}-${item[api.urlField || 'url'] || i}`,
+        title: item[api.titleField || 'title'] || 'Sans titre',
+        description: item[api.descField || 'description'] || item['snippet'] || '',
+        url: item[api.urlField || 'url'] || item['link'] || '',
+        source: api.name,
+        favicon: null,
+      }));
+    }
+
+    // ── Word Field ────────────────────────────────────────────────────────────
+    const WORDS = [
+      "GET", "POST", "PUT", "DELETE", "PATCH", "endpoint", "payload", "JSON",
+      "schema", "header", "200", "401", "404", "500", "rate limit", "auth",
+      "token", "OAuth", "bearer", "API key", "webhook", "graphql", "REST",
+      "gRPC", "socket", "query", "params", "body", "response", "request",
+      "timeout", "retry", "cache", "TTL", "etag", "OpenAPI", "swagger",
+      "curl", "fetch", "async", "await", "promise", "stream", "uuid",
+      "cursor", "offset", "sandbox", "production", "v1", "v2", "stable",
+      "beta", "deprecated", "throughput", "latency", "uptime", "SLA",
+    ];
+
+    function WordField({ compact = false }) {
+      const items = useMemo(() => {
+        const out = [];
+        const cols = compact ? 5 : 7;
+        const rows = compact ? 6 : 9;
+        let i = 0;
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const word = WORDS[(i * 17 + r * 3 + c * 5) % WORDS.length];
+            const x = (c + 0.5) / cols * 100 + Math.sin(i * 1.7) * 4;
+            const y = (r + 0.5) / rows * 100 + Math.cos(i * 2.3) * 3;
+            const rot = ((i * 31) % 17) - 8;
+            const size = compact ? 9 + (i * 7) % 10 : 11 + (i * 7) % 14;
+            const blue = (i * 11) % 7 === 0;
+            const opacity = blue ? (compact ? 0.15 : 0.30) : 0.04 + (i * 13) % 8 / 100;
+            const driftDur = 14 + (i * 11) % 18;
+            const driftDelay = -((i * 3) % driftDur);
+            out.push({ word, x, y, rot, size, opacity, driftDur, driftDelay, blue, key: i });
+            i++;
+          }
+        }
+        return out;
+      }, [compact]);
+
+      return (
+        <div className="word-field" aria-hidden="true">
+          {items.map(it => (
+            <span key={it.key} className="word" style={{
+              left: `${it.x}%`, top: `${it.y}%`,
+              fontSize: `${it.size}px`, opacity: it.opacity,
+              color: it.blue ? 'var(--blue)' : 'var(--ink)',
+              transform: `translate(-50%, -50%) rotate(${it.rot}deg)`,
+              animation: `drift-${it.key % 4} ${it.driftDur}s ease-in-out ${it.driftDelay}s infinite alternate`,
+            }}>{it.word}</span>
+          ))}
+        </div>
+      );
+    }
+
+    // ── Magnifier ─────────────────────────────────────────────────────────────
+    function MagnifierGlyph({ size }) {
+      return (
+        <svg width={size} height={size * (260/220)} viewBox="0 0 220 260" style={{ display: 'block' }}>
+          <defs>
+            <radialGradient id="glassGrad" cx="35%" cy="30%" r="80%">
+              <stop offset="0%" stopColor="rgba(37,99,255,0.18)" />
+              <stop offset="60%" stopColor="rgba(37,99,255,0.05)" />
+              <stop offset="100%" stopColor="rgba(37,99,255,0)" />
+            </radialGradient>
+          </defs>
+          <g transform="rotate(38 95 95)">
+            <rect x="91" y="160" width="18" height="92" rx="6" fill="#0a0a0a" />
+            <ellipse cx="100" cy="160" rx="15" ry="9" fill="#0a0a0a" />
+            <rect x="88" y="248" width="24" height="8" rx="3" fill="#0a0a0a" />
+          </g>
+          <circle cx="95" cy="95" r="84" fill="none" stroke="#0a0a0a" strokeWidth="14" />
+          <circle cx="95" cy="95" r="76" fill="url(#glassGrad)" />
+          <ellipse cx="62" cy="62" rx="22" ry="10" fill="rgba(255,255,255,0.6)" transform="rotate(-30 62 62)" />
+        </svg>
+      );
+    }
+
+    function Magnifier({ followSpeed }) {
+      const ref = useRef(null);
+      const target = useRef({ x: 0, y: 0 });
+      const pos = useRef({ x: 0, y: 0 });
+      const rafId = useRef(null);
+      const tilt = useRef(0);
+      const sizeRef = useRef(560);
+      const [size, setSize] = useState(560);
+
+      useEffect(() => {
+        target.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+        pos.current = { ...target.current };
+
+        const onMove = e => { target.current.x = e.clientX; target.current.y = e.clientY; };
+        const onResize = () => {
+          const s = Math.max(420, Math.min(720, Math.min(window.innerWidth, window.innerHeight) * 0.7));
+          sizeRef.current = s;
+          setSize(s);
+        };
+        onResize();
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('resize', onResize);
+
+        let lastTime = performance.now(), bobPhase = 0;
+        const tick = t => {
+          const dt = Math.min(48, t - lastTime);
+          lastTime = t;
+          bobPhase += dt * 0.0015;
+          const k = Math.min(1, followSpeed * (dt / 16.67));
+          const dx = target.current.x - pos.current.x;
+          const dy = target.current.y - pos.current.y;
+          pos.current.x += dx * k;
+          pos.current.y += dy * k;
+          tilt.current += (Math.max(-10, Math.min(10, dx * 0.04)) - tilt.current) * 0.08;
+          if (ref.current) {
+            const lx = (95 / 220) * sizeRef.current, ly = lx;
+            ref.current.style.transform =
+              `translate(${pos.current.x - lx + Math.cos(bobPhase * 0.7) * 4}px, ${pos.current.y - ly + Math.sin(bobPhase) * 6}px) rotate(${tilt.current}deg)`;
+            ref.current.style.transformOrigin = `${lx}px ${ly}px`;
+          }
+          rafId.current = requestAnimationFrame(tick);
+        };
+        rafId.current = requestAnimationFrame(tick);
+        return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('resize', onResize); cancelAnimationFrame(rafId.current); };
+      }, [followSpeed]);
+
+      return <div ref={ref} className="magnifier" aria-hidden="true"><MagnifierGlyph size={size} /></div>;
+    }
+
+    // ── Cursor ────────────────────────────────────────────────────────────────
+    function Cursor() {
+      const dotRef = useRef(null), ringRef = useRef(null);
+      const target = useRef({ x: -100, y: -100 }), ring = useRef({ x: -100, y: -100 });
+      const rafId = useRef(null);
+
+      useEffect(() => {
+        const onMove = e => {
+          target.current = { x: e.clientX, y: e.clientY };
+          ringRef.current?.classList.toggle('hover', !!e.target?.closest?.('input,button,a,.chip,.btn-configure,.logo-btn'));
+        };
+        window.addEventListener('mousemove', onMove);
+        const tick = () => {
+          ring.current.x += (target.current.x - ring.current.x) * 0.22;
+          ring.current.y += (target.current.y - ring.current.y) * 0.22;
+          if (dotRef.current) { dotRef.current.style.left = target.current.x + 'px'; dotRef.current.style.top = target.current.y + 'px'; }
+          if (ringRef.current) { ringRef.current.style.left = ring.current.x + 'px'; ringRef.current.style.top = ring.current.y + 'px'; }
+          rafId.current = requestAnimationFrame(tick);
+        };
+        rafId.current = requestAnimationFrame(tick);
+        return () => { window.removeEventListener('mousemove', onMove); cancelAnimationFrame(rafId.current); };
+      }, []);
+
+      return <><div ref={ringRef} className="cursor-ring" /><div ref={dotRef} className="cursor-dot" /></>;
+    }
+
+    // ── Theme system ──────────────────────────────────────────────────────────
+    const THEME_KEY = 'searcher_theme_v1';
+    const PRESET_THEMES = [
+      { id:'light',    name:'Clair',         bg:'#ffffff', ink:'#0a0a0a', inkSoft:'#2a2a2a', inkMute:'#6b7280', inkFaint:'#d4d6db', rule:'#e5e7eb', blue:'#2563ff', blueSoft:'#e8efff', blueDeep:'#0040d6', fontMain:'Geist', fontMono:'JetBrains Mono' },
+      { id:'dark',     name:'Sombre',         bg:'#111111', ink:'#f0f0f0', inkSoft:'#d0d0d0', inkMute:'#888888', inkFaint:'#333333', rule:'#2a2a2a', blue:'#4d8aff', blueSoft:'#1a2844', blueDeep:'#2563ff', fontMain:'Geist', fontMono:'JetBrains Mono' },
+      { id:'midnight', name:'Minuit',         bg:'#06091a', ink:'#dce8ff', inkSoft:'#a0bcee', inkMute:'#5070a0', inkFaint:'#0e1830', rule:'#1a2845', blue:'#70b0ff', blueSoft:'#0a1630', blueDeep:'#5090f0', fontMain:'Geist', fontMono:'JetBrains Mono' },
+      { id:'sepia',    name:'Sépia',          bg:'#f5f0e8', ink:'#2c1a0a', inkSoft:'#4a3020', inkMute:'#8a6a50', inkFaint:'#d5c8b8', rule:'#e0d0c0', blue:'#9b4e20', blueSoft:'#f0e4d8', blueDeep:'#7a3a15', fontMain:'Geist', fontMono:'JetBrains Mono' },
+      { id:'forest',   name:'Forêt',          bg:'#eef4ee', ink:'#1a2e1a', inkSoft:'#2a4828', inkMute:'#5a7e5a', inkFaint:'#c0d8c0', rule:'#cce0cc', blue:'#2e7d32', blueSoft:'#ddeedd', blueDeep:'#1b5e20', fontMain:'Geist', fontMono:'JetBrains Mono' },
+      { id:'custom',   name:'Personnalisé',   bg:'#ffffff', ink:'#0a0a0a', inkSoft:'#2a2a2a', inkMute:'#6b7280', inkFaint:'#d4d6db', rule:'#e5e7eb', blue:'#2563ff', blueSoft:'#e8efff', blueDeep:'#0040d6', fontMain:'Geist', fontMono:'JetBrains Mono' },
+    ];
+
+    const FONTS_MAIN = ['Geist', 'Inter', 'Poppins', 'Playfair Display', 'System'];
+    const FONTS_MONO = ['JetBrains Mono', 'Fira Code', 'Courier New'];
+
+    function loadTheme() {
+      try { return JSON.parse(localStorage.getItem(THEME_KEY)) || PRESET_THEMES[0]; }
+      catch { return PRESET_THEMES[0]; }
+    }
+    function saveTheme(t) { localStorage.setItem(THEME_KEY, JSON.stringify(t)); }
+
+    function ensureFont(name) {
+      if (name === 'System' || name === 'Courier New') return;
+      const id = `gf-${name.replace(/\s/g, '-').toLowerCase()}`;
+      if (document.getElementById(id)) return;
+      const link = document.createElement('link');
+      link.id = id; link.rel = 'stylesheet';
+      link.href = `https://fonts.googleapis.com/css2?family=${name.replace(/\s/g, '+')}:wght@300;400;500;600;700&display=swap`;
+      document.head.appendChild(link);
+    }
+
+    function applyTheme(t) {
+      const r = document.documentElement.style;
+      r.setProperty('--bg', t.bg);
+      r.setProperty('--ink', t.ink);
+      r.setProperty('--ink-soft', t.inkSoft || t.ink);
+      r.setProperty('--ink-mute', t.inkMute);
+      r.setProperty('--ink-faint', t.inkFaint);
+      r.setProperty('--rule', t.rule);
+      r.setProperty('--blue', t.blue);
+      r.setProperty('--blue-soft', t.blueSoft);
+      r.setProperty('--blue-deep', t.blueDeep || t.blue);
+
+      ensureFont(t.fontMain); ensureFont(t.fontMono);
+
+      // Detect dark bg for derived values
+      const isDark = parseInt(t.bg.slice(1,3), 16) < 100;
+      const dotAlpha = isDark ? '0.06' : '0.08';
+      const dotRgb   = isDark ? '200,220,255' : '10,10,10';
+      const blueR = parseInt(t.blue.slice(1,3),16), blueG = parseInt(t.blue.slice(3,5),16), blueB = parseInt(t.blue.slice(5,7),16);
+      const bgR   = parseInt(t.bg.slice(1,3),16),   bgG   = parseInt(t.bg.slice(3,5),16),   bgB   = parseInt(t.bg.slice(5,7),16);
+      const bodyBg = `radial-gradient(ellipse 80% 60% at 50% 0%, rgba(${blueR},${blueG},${blueB},${isDark?'0.08':'0.04'}) 0%, transparent 70%), linear-gradient(180deg, ${t.bg} 0%, rgb(${Math.max(0,bgR-6)},${Math.max(0,bgG-6)},${Math.max(0,bgB-6)}) 100%)`;
+      const inputBg  = isDark ? `rgb(${Math.min(255,bgR+14)},${Math.min(255,bgG+14)},${Math.min(255,bgB+14)})` : t.bg;
+      const cardBg   = isDark ? `rgba(${Math.min(255,bgR+10)},${Math.min(255,bgG+10)},${Math.min(255,bgB+10)},0.95)` : `rgba(${bgR},${bgG},${bgB},0.9)`;
+      const fm  = t.fontMain === 'System' ? 'system-ui, ui-sans-serif, sans-serif' : `'${t.fontMain}', ui-sans-serif, system-ui, sans-serif`;
+      const fmo = t.fontMono === 'Courier New' ? "'Courier New', monospace" : `'${t.fontMono}', monospace`;
+
+      let el = document.getElementById('theme-dyn');
+      if (!el) { el = document.createElement('style'); el.id = 'theme-dyn'; document.head.appendChild(el); }
+      el.textContent = `
+        body { background: ${bodyBg} !important; font-family: ${fm} !important; }
+        body::before { background-image: radial-gradient(circle, rgba(${dotRgb},${dotAlpha}) 1px, transparent 1px) !important; }
+        button, input, select, textarea, .modal, .auth-card, .results-body, .masthead,
+        .modal-title, .modal-section-title, .auth-form, .ip-location, .auth-logo-name,
+        .result-title, .result-description { font-family: ${fm} !important; }
+        .result-url, .chip, .source-chip, .nav-btn, .builtin-chip, .builtin-label,
+        .ip-address, .ip-tag, kbd, .phone-badge, .auth-field label,
+        .phone-meta-item, .phone-number-display { font-family: ${fmo} !important; }
+        .result-card, .phone-card, .ip-card, .auth-card, .modal { background: ${cardBg} !important; }
+        input, .auth-input, .theme-hex, .theme-select { background: ${inputBg} !important; color: ${t.ink} !important; }
+        .theme-card { background: ${t.bg} !important; }
+        .theme-card.selected { background: ${t.blueSoft} !important; border-color: ${t.blue} !important; }
+      `;
+    }
+
+    // ── Theme Modal ───────────────────────────────────────────────────────────
+    function ThemeModal({ theme, onSave, onClose }) {
+      const [local, setLocal] = useState({ ...theme });
+
+      const set = (k, v) => setLocal(p => {
+        const next = { ...p, [k]: v };
+        if (k !== 'id') next.id = 'custom';
+        return next;
+      });
+
+      const selectPreset = (preset) => {
+        const next = { ...preset };
+        setLocal(next);
+        applyTheme(next);
+      };
+
+      const handleColorChange = (k, v) => {
+        const next = { ...local, [k]: v, id: 'custom' };
+        setLocal(next);
+        applyTheme(next);
+      };
+
+      const handleFontChange = (k, v) => {
+        const next = { ...local, [k]: v, id: 'custom' };
+        setLocal(next);
+        applyTheme(next);
+      };
+
+      const apply = () => { saveTheme(local); applyTheme(local); onSave(local); onClose(); };
+
+      // Palette icon
+      const PaletteIcon = () => (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8z" stroke="currentColor" strokeWidth="1.8"/>
+          <circle cx="6.5" cy="11.5" r="1.5" fill="currentColor"/>
+          <circle cx="9.5" cy="7.5" r="1.5" fill="currentColor"/>
+          <circle cx="14.5" cy="7.5" r="1.5" fill="currentColor"/>
+          <circle cx="17.5" cy="11.5" r="1.5" fill="currentColor"/>
+        </svg>
+      );
+
+      return (
+        <div className="modal-overlay" onClick={onClose}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span style={{ display:'flex', alignItems:'center', gap:8 }}><PaletteIcon /> Apparence</span>
+              <button className="modal-close" onClick={onClose}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="modal-section-title" style={{ marginBottom: 12 }}>Thèmes prédéfinis</div>
+              <div className="theme-grid">
+                {PRESET_THEMES.map(p => (
+                  <div key={p.id} className={`theme-card${local.id === p.id ? ' selected' : ''}`} onClick={() => selectPreset(p)}>
+                    <div className="theme-swatches">
+                      <div className="theme-swatch" style={{ background: p.bg }} />
+                      <div className="theme-swatch" style={{ background: p.ink }} />
+                      <div className="theme-swatch" style={{ background: p.blue }} />
+                    </div>
+                    <div className="theme-card-name">{p.name}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="theme-custom-section">
+                <div className="theme-section-label">Couleurs personnalisées</div>
+                {[
+                  { label: 'Fond',    k: 'bg' },
+                  { label: 'Texte',   k: 'ink' },
+                  { label: 'Accent',  k: 'blue' },
+                ].map(({ label, k }) => (
+                  <div className="theme-color-row" key={k}>
+                    <label>{label}</label>
+                    <input type="color" className="theme-color-input" value={local[k]} onChange={e => handleColorChange(k, e.target.value)} />
+                    <input type="text" className="theme-hex" value={local[k]} onChange={e => /^#[0-9a-fA-F]{0,6}$/.test(e.target.value) && handleColorChange(k, e.target.value)} />
+                  </div>
+                ))}
+
+                <div className="theme-section-label" style={{ marginTop: 6 }}>Polices</div>
+                <div className="theme-color-row">
+                  <label>Principale</label>
+                  <select className="theme-select" value={local.fontMain} onChange={e => handleFontChange('fontMain', e.target.value)}>
+                    {FONTS_MAIN.map(f => <option key={f} value={f}>{f}</option>)}
+                  </select>
+                </div>
+                <div className="theme-color-row">
+                  <label>Code</label>
+                  <select className="theme-select" value={local.fontMono} onChange={e => handleFontChange('fontMono', e.target.value)}>
+                    {FONTS_MONO.map(f => <option key={f} value={f}>{f}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-save" onClick={apply}>Appliquer le thème</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Phone Card ────────────────────────────────────────────────────────────
+    function PhoneCard({ phone }) {
+      const flag = countryFlag(phone.country);
+      const typeLabel = PHONE_TYPE_FR[phone.type] ?? null;
+      return (
+        <div className={`phone-card ${phone.valid ? 'valid' : 'invalid'}`}>
+          <div className="phone-card-header">
+            <div className="phone-label">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+              </svg>
+              Validation numéro
+            </div>
+            <span className={`phone-badge ${phone.valid ? 'valid' : 'invalid'}`}>
+              {phone.valid ? '✓ VALIDE' : '✗ INVALIDE'}
+            </span>
+          </div>
+
+          {phone.valid ? (
+            <>
+              <div className="phone-number-display">{phone.formatted}</div>
+              <div className="phone-meta">
+                {phone.countryName && (
+                  <span className="phone-meta-item">{flag} {phone.countryName}</span>
+                )}
+                {typeLabel && (
+                  <span className="phone-meta-item">📶 {typeLabel}</span>
+                )}
+                {phone.carrier && (
+                  <span className="phone-meta-item">📡 {phone.carrier}</span>
+                )}
+                {phone.national && phone.national !== phone.formatted && (
+                  <span className="phone-meta-item">🇫🇷 {phone.national}</span>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="phone-number-display" style={{ color: 'var(--ink-mute)', fontSize: 20 }}>{phone.input}</div>
+              <div className="phone-invalid-msg">Numéro invalide — vérifiez le format ou ajoutez l'indicatif pays (ex : +33…)</div>
+            </>
+          )}
+        </div>
+      );
+    }
+
+    // ── Result Card ───────────────────────────────────────────────────────────
+    function ResultCard({ result }) {
+      return (
+        <a className="result-card" href={result.url || '#'} target="_blank" rel="noopener noreferrer">
+          <div className="result-header">
+            {result.favicon && <img className="result-favicon" src={result.favicon} alt="" width={16} height={16} onError={e => e.target.style.display = 'none'} />}
+            <span className="result-source">{result.source}</span>
+            {result.url && <span className="result-url">{result.url}</span>}
+          </div>
+          <div className="result-title">{result.title}</div>
+          {result.description && <div className="result-description">{result.description}</div>}
+        </a>
+      );
+    }
+
+    // ── Search Icon SVG ───────────────────────────────────────────────────────
+    function SearchIcon({ size = 20 }) {
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" strokeWidth="1.8" />
+          <line x1="15.5" y1="15.5" x2="20" y2="20" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+      );
+    }
+
+    // ── Gear Icon SVG ─────────────────────────────────────────────────────────
+    function GearIcon({ size = 16 }) {
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
+          <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+      );
+    }
+
+    // ── Pricing Modal ─────────────────────────────────────────────────────────
+    const FREE_FEATURES = [
+      'Recherche Wikipedia FR + EN',
+      'Validation téléphone mondiale',
+      'Détection pays & opérateur',
+      'Curseur & loupe interactifs',
+      'Interface moderne & responsive',
+    ];
+    const STD_FEATURES = [
+      'Tout du plan Gratuit',
+      'Google Custom Search intégré',
+      'APIs personnalisées illimitées',
+      'Recherches illimitées / jour',
+      'Historique de recherche',
+      'Export résultats JSON / CSV',
+      'Accès API REST prioritaire',
+      'Support email dédié',
+      'Mises à jour en avant-première',
+    ];
+
+    function PlanCard({ name, amount, desc, features, ctaLabel, ctaClass, popular }) {
+      return (
+        <div className={`pricing-card${popular ? ' popular' : ''}`}>
+          {popular && <div className="popular-badge">⭐ Recommandé</div>}
+          <div>
+            <div className="plan-name">{name}</div>
+            <div className="plan-price">
+              <span className="plan-currency">€</span>
+              <span className="plan-amount">{amount}</span>
+              <span className="plan-period">/mois</span>
+            </div>
+          </div>
+          <div className="plan-desc">{desc}</div>
+          <div className="plan-features">
+            {features.map(f => <div key={f} className="plan-feature"><span className="check">✓</span>{f}</div>)}
+          </div>
+          <button className={`plan-cta ${ctaClass}`}>{ctaLabel}</button>
+        </div>
+      );
+    }
+
+    function PricingModal({ onClose }) {
+      return (
+        <div className="pricing-overlay" onClick={onClose}>
+          <div className="pricing-modal" style={{ position: 'relative' }} onClick={e => e.stopPropagation()}>
+            <button className="pricing-close" onClick={onClose}>✕</button>
+            <div className="pricing-header">
+              <div className="pricing-eyebrow">Plans & Tarifs</div>
+              <div className="pricing-title">Simple, transparent.</div>
+              <div className="pricing-subtitle">Commencez gratuitement, évoluez quand vous en avez besoin.</div>
+            </div>
+            <div className="pricing-cards">
+              <PlanCard name="Gratuit" amount="0" desc="Parfait pour démarrer. Aucune carte bancaire requise."
+                features={FREE_FEATURES} ctaLabel="Commencer gratuitement" ctaClass="free" />
+              <PlanCard name="Standard" amount="4,99" desc="Toutes les fonctionnalités pour les professionnels."
+                features={STD_FEATURES} ctaLabel="Choisir Standard — 4,99 €/mois" ctaClass="paid" popular />
+            </div>
+            <div className="pricing-divider">Paiement sécurisé · Annulation à tout moment · Sans engagement</div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── IP Card ───────────────────────────────────────────────────────────────
+    function IPCard({ result }) {
+      // Globe icon
+      const GlobeIcon = () => (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.8"/>
+          <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" stroke="currentColor" strokeWidth="1.8"/>
+        </svg>
+      );
+
+      if (result.loading) {
+        return (
+          <div className="ip-card loading">
+            <div className="phone-card-header">
+              <div className="phone-label"><GlobeIcon /> Géolocalisation IP</div>
+              <span className="phone-badge" style={{ background: 'var(--blue-soft)', color: 'var(--blue)' }}>Recherche…</span>
+            </div>
+            <div className="ip-address" style={{ color: 'var(--ink-mute)' }}>{result.ip}</div>
+          </div>
+        );
+      }
+
+      if (result.error) {
+        return (
+          <div className="ip-card error">
+            <div className="phone-card-header">
+              <div className="phone-label"><GlobeIcon /> Géolocalisation IP</div>
+              <span className="phone-badge invalid">✗ Erreur</span>
+            </div>
+            <div className="ip-address">{result.ip}</div>
+            <div className="phone-invalid-msg">{result.error}</div>
+          </div>
+        );
+      }
+
+      const d = result.data;
+      // ipinfo.io: loc = "lat,lon", org = "AS#### Name", country = "US"
+      const [lat, lon] = (d.loc || '').split(',');
+      const countryName = getCountryName(d.country);
+      const flag = d.country ? countryFlag(d.country) : '';
+      const locationParts = [d.city, d.region, countryName].filter(Boolean);
+      const tags = [
+        d.org && { label: d.org },
+        d.postal && { label: d.postal },
+        d.timezone && { label: d.timezone },
+        d.hostname && { label: d.hostname },
+      ].filter(Boolean);
+
+      return (
+        <div className="ip-card">
+          <div className="phone-card-header">
+            <div className="phone-label"><GlobeIcon /> Géolocalisation IP</div>
+            <span className="phone-badge valid">✓ Trouvé</span>
+          </div>
+          <div className="ip-address">{d.ip}</div>
+          <div className="ip-location">
+            {flag && <span className="ip-flag">{flag}</span>}
+            {locationParts.join(', ')}
+          </div>
+          {tags.length > 0 && (
+            <div className="ip-meta">
+              {tags.map((t, i) => <span key={i} className="ip-tag">{t.label}</span>)}
+            </div>
+          )}
+          {lat && lon && (() => {
+            const la = parseFloat(lat), lo = parseFloat(lon);
+            const delta = 0.08;
+            const bbox = `${lo-delta},${la-delta},${lo+delta},${la+delta}`;
+            const mapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${la},${lo}`;
+            return (
+              <>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--ink-mute)' }}>
+                  {la.toFixed(4)}, {lo.toFixed(4)}
+                </div>
+                <iframe
+                  src={mapUrl}
+                  style={{ width: '100%', height: 200, border: 'none', borderRadius: 10, marginTop: 4 }}
+                  title="Carte IP"
+                  loading="lazy"
+                />
+              </>
+            );
+          })()}
+        </div>
+      );
+    }
+
+    // ── Results Page ──────────────────────────────────────────────────────────
+    function ResultsPage({ query, results, loading, error, phoneResult, ipResult, config, onSearch, onTheme, onPricing, onBack, followSpeed, session, onLogout }) {
+      const [input, setInput] = useState(query);
+
+      const submit = e => { e.preventDefault(); if (input.trim()) onSearch(input.trim()); };
+
+      return (
+        <div className="results-root">
+          <Magnifier followSpeed={followSpeed} />
+          <WordField compact />
+
+          <div className="corner tl">
+            <button className="logo-btn" onClick={onBack} title="Accueil">
+              <div className="logo">S</div>
+              <div className="brand-name">Searcher</div>
+            </button>
+          </div>
+          <div className="corner tr">
+            <div className="badge"><span className="live" />&nbsp;En ligne</div>
+          </div>
+
+          <div className="results-topbar">
+            <button className="nav-btn home" onClick={onBack} title="Retour à l'accueil">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H5a1 1 0 01-1-1V9.5z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/><path d="M9 21V12h6v9" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg>
+              Accueil
+            </button>
+            <form className="results-search-wrap" onSubmit={submit}>
+              <span className="search-icon" style={{ left: 14, color: 'var(--ink-mute)' }}>
+                <SearchIcon size={17} />
+              </span>
+              <input
+                className="results-search"
+                type="text"
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                placeholder="Nouvelle recherche…"
+                autoFocus
+              />
+              <span className="kbd">↵</span>
+            </form>
+            <button className="nav-btn" onClick={onPricing} title="Tarifs">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg>
+              Tarifs
+            </button>
+            <button className="nav-btn apparence" onClick={onTheme} title="Apparence">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8z" stroke="currentColor" strokeWidth="1.8"/><circle cx="6.5" cy="11.5" r="1.5" fill="currentColor"/><circle cx="9.5" cy="7.5" r="1.5" fill="currentColor"/><circle cx="14.5" cy="7.5" r="1.5" fill="currentColor"/></svg>
+              Apparence
+            </button>
+            {session && (
+              <span className="user-chip">
+                <span className="user-avatar">{session.name[0].toUpperCase()}</span>
+                {session.name}
+              </span>
+            )}
+            <button className="nav-btn logout" onClick={onLogout}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              Déconnexion
+            </button>
+          </div>
+
+          <div className="results-body">
+            {/* Built-in sources banner */}
+            <div className="builtin-banner">
+              <span className="builtin-label">Sources actives :</span>
+              <span className="builtin-chip"><span className="dot-green" />Wikipedia FR+EN</span>
+              <span className="builtin-chip"><span className="dot-green" />Validation téléphone</span>
+              <span className="builtin-chip"><span className="dot-green" />Géolocalisation IP</span>
+              {config.googleApiKey && <span className="builtin-chip"><span className="dot-green" />Google</span>}
+              {config.customApis.map(a => <span key={a.name} className="builtin-chip"><span className="dot-green" />{a.name}</span>)}
+            </div>
+
+            {phoneResult && <PhoneCard phone={phoneResult} />}
+            {ipResult && <IPCard result={ipResult} />}
+
+            <div className="results-meta">
+              {loading
+                ? <span className="results-count loading-pulse">Recherche en cours…</span>
+                : !error && <span className="results-count">{results.length} résultat{results.length !== 1 ? 's' : ''} pour <b>"{query}"</b></span>
+              }
+              {!loading && results.length > 0 && (
+                <div className="source-chips">
+                  {[...new Set(results.map(r => r.source))].map(src => (
+                    <span key={src} className="source-chip">{src}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {loading && (
+              <div className="results-list">
+                {[1, 2, 3].map(i => <div key={i} className="result-skeleton" style={{ height: i === 1 ? 110 : 95 }} />)}
+              </div>
+            )}
+
+            {!loading && error && (
+              <div className="results-error">
+                <span className="error-icon">⚠</span>
+                <div>
+                  <div className="error-title">Erreur lors de la recherche</div>
+                  <div className="error-desc">{error}</div>
+                </div>
+              </div>
+            )}
+
+            {!loading && !error && results.length === 0 && !phoneResult && !ipResult && (
+              <div className="results-empty">
+                <div className="empty-icon"><SearchIcon size={48} /></div>
+                <div className="empty-title">Aucun résultat</div>
+                <div className="empty-desc">Aucun résultat trouvé sur Wikipedia pour <b>"{query}"</b>. Essayez avec d'autres termes.</div>
+              </div>
+            )}
+
+            {!loading && !error && results.length > 0 && (
+              <div className="results-list">
+                {results.map(r => <ResultCard key={r.id} result={r} />)}
+              </div>
+            )}
+          </div>
+
+          <Cursor />
+        </div>
+      );
+    }
+
+    // ── Search Page ───────────────────────────────────────────────────────────
+    const CHIPS = ['GET /users', 'auth', 'webhooks', 'rate limits', 'v2'];
+
+    function SearchPage({ onSearch, onTheme, onPricing, followSpeed, session, onLogout }) {
+      const [query, setQuery] = useState('');
+
+      const submit = e => { e.preventDefault(); if (query.trim()) onSearch(query.trim()); };
+      const chipClick = c => { setQuery(c); onSearch(c); };
+
+      return (
+        <>
+          <Magnifier followSpeed={followSpeed} />
+          <WordField />
+
+          <div className="corner tl">
+            <div className="logo">S</div>
+            <div className="brand-name">Searcher</div>
+          </div>
+          <div className="corner tr">
+            <div className="badge"><span className="live" />&nbsp;En ligne</div>
+          </div>
+          <div className="corner bl">
+            <span>v0.1 · build 042526</span>
+          </div>
+          <div className="corner br" style={{ gap: 8 }}>
+            {session && (
+              <span className="user-chip">
+                <span className="user-avatar">{session.name[0].toUpperCase()}</span>
+                {session.name}
+              </span>
+            )}
+            <button className="nav-btn" onClick={onPricing}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg>
+              Tarifs
+            </button>
+            <button className="nav-btn apparence" onClick={onTheme}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8z" stroke="currentColor" strokeWidth="1.8"/><circle cx="6.5" cy="11.5" r="1.5" fill="currentColor"/><circle cx="9.5" cy="7.5" r="1.5" fill="currentColor"/><circle cx="14.5" cy="7.5" r="1.5" fill="currentColor"/></svg>
+              Apparence
+            </button>
+            <button className="nav-btn logout" onClick={onLogout}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              Déconnexion
+            </button>
+          </div>
+
+          <div className="stage">
+            <div className="masthead">
+              <div className="eyebrow">
+                <span className="pulse" />
+                Recherche d'API
+              </div>
+              <div className="wordmark">
+                Search<span className="accent">er</span><span className="dot">.</span>
+              </div>
+              <div className="tag">
+                Trouvez n'importe quel endpoint, méthode ou paramètre. Une recherche unifiée pour vos API.
+              </div>
+            </div>
+
+            <form className="search-wrap" onSubmit={submit}>
+              <input
+                type="text"
+                className="search"
+                placeholder="Cherchez un endpoint, une méthode, un mot-clé…"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                autoFocus
+              />
+              <span className="search-icon" aria-hidden="true"><SearchIcon size={20} /></span>
+              <span className="kbd">↵</span>
+            </form>
+
+            <div className="meta-row">
+              {CHIPS.map(c => (
+                <span key={c} className="chip" onClick={() => chipClick(c)}>{c}</span>
+              ))}
+            </div>
+          </div>
+
+          <Cursor />
+        </>
+      );
+    }
+
+    // ── Auth helpers ──────────────────────────────────────────────────────────
+    const SESSION_KEY = 'searcher_session_v1';
+    const USERS_KEY   = 'searcher_users_v1';
+
+    function loadSession() {
+      try { return JSON.parse(localStorage.getItem(SESSION_KEY)); } catch { return null; }
+    }
+    function saveSession(s) { localStorage.setItem(SESSION_KEY, JSON.stringify(s)); }
+    function clearSession() { localStorage.removeItem(SESSION_KEY); }
+
+    function getUsers() {
+      try { return JSON.parse(localStorage.getItem(USERS_KEY)) || []; } catch { return []; }
+    }
+    function registerUser(name, email, password) {
+      const users = getUsers();
+      if (users.find(u => u.email.toLowerCase() === email.toLowerCase()))
+        throw new Error('Un compte existe déjà avec cet email.');
+      const user = { name: name.trim(), email: email.trim().toLowerCase(), password };
+      localStorage.setItem(USERS_KEY, JSON.stringify([...users, user]));
+      return user;
+    }
+    function loginUser(email, password) {
+      const user = getUsers().find(u =>
+        u.email === email.trim().toLowerCase() && u.password === password
+      );
+      if (!user) throw new Error('Email ou mot de passe incorrect.');
+      return user;
+    }
+
+    // ── Auth Page ─────────────────────────────────────────────────────────────
+    function AuthPage({ onAuth }) {
+      const [tab, setTab]         = useState('login');
+      const [name, setName]       = useState('');
+      const [email, setEmail]     = useState('');
+      const [password, setPassword] = useState('');
+      const [error, setError]     = useState('');
+      const [busy, setBusy]       = useState(false);
+
+      const switchTab = t => { setTab(t); setError(''); };
+
+      const submit = e => {
+        e.preventDefault();
+        setError('');
+        setBusy(true);
+        try {
+          let user;
+          if (tab === 'register') {
+            if (!name.trim()) throw new Error('Le nom est requis.');
+            if (password.length < 6) throw new Error('Mot de passe : 6 caractères minimum.');
+            user = registerUser(name, email, password);
+          } else {
+            user = loginUser(email, password);
+          }
+          const session = { name: user.name, email: user.email };
+          saveSession(session);
+          onAuth(session);
+        } catch (err) {
+          setError(err.message);
+        } finally {
+          setBusy(false);
+        }
+      };
+
+      return (
+        <div className="auth-overlay">
+          <div className="auth-card">
+            <div className="auth-logo">
+              <div className="auth-logo-mark">S</div>
+              <div className="auth-logo-name">Searcher</div>
+            </div>
+
+            <div className="auth-tabs">
+              <button className={`auth-tab${tab === 'login' ? ' active' : ''}`} onClick={() => switchTab('login')}>Connexion</button>
+              <button className={`auth-tab${tab === 'register' ? ' active' : ''}`} onClick={() => switchTab('register')}>Inscription</button>
+            </div>
+
+            <form className="auth-form" onSubmit={submit}>
+              {tab === 'register' && (
+                <div className="auth-field">
+                  <label>Nom</label>
+                  <input className="auth-input" type="text" placeholder="Jean Dupont" value={name} onChange={e => setName(e.target.value)} required autoFocus />
+                </div>
+              )}
+              <div className="auth-field">
+                <label>Email</label>
+                <input className="auth-input" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required autoFocus={tab === 'login'} />
+              </div>
+              <div className="auth-field">
+                <label>Mot de passe</label>
+                <input className="auth-input" type="password" placeholder={tab === 'register' ? '6 caractères minimum' : '••••••••'} value={password} onChange={e => setPassword(e.target.value)} required />
+              </div>
+              {error && <div className="auth-error">{error}</div>}
+              <button className="auth-submit" type="submit" disabled={busy}>
+                {busy ? '…' : tab === 'register' ? 'Créer mon compte' : 'Se connecter'}
+              </button>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    // ── App ───────────────────────────────────────────────────────────────────
+    function App() {
+      const [session, setSession] = useState(loadSession);
+      const [config, setConfig] = useState(loadConfig);
+      const [page, setPage] = useState('search');
+      const [query, setQuery] = useState('');
+      const [results, setResults] = useState([]);
+      const [phoneResult, setPhoneResult] = useState(null);
+      const [ipResult, setIpResult] = useState(null);
+      const [loading, setLoading] = useState(false);
+      const [error, setError] = useState(null);
+      const [theme, setTheme] = useState(loadTheme);
+      const [showTheme, setShowTheme] = useState(false);
+      const [showPricing, setShowPricing] = useState(false);
+      useEffect(() => { applyTheme(theme); }, []);
+      const configRef = useRef(config);
+      useEffect(() => { configRef.current = config; }, [config]);
+
+      const handleSearch = useCallback(async q => {
+        const cfg = configRef.current;
+        setQuery(q);
+        setPage('results');
+        setLoading(true);
+        setError(null);
+        setResults([]);
+        setPhoneResult(null);
+        setIpResult(null);
+
+        const all = [], errs = [];
+        const hasExtraSources = cfg.googleApiKey || cfg.customApis.length > 0;
+        const isIP = looksLikeIP(q);
+
+        if (!isIP && looksLikePhone(q)) setPhoneResult(validatePhone(q));
+
+        if (isIP) {
+          setIpResult({ loading: true, ip: q });
+          geolocateIP(q)
+            .then(data => setIpResult({ ip: q, data }))
+            .catch(e => setIpResult({ ip: q, error: e.message }));
+          setLoading(false);
+          return;
+        }
+
+        try {
+          all.push(...await searchWikipedia(q));
+          if (hasExtraSources) setResults([...all]);
+        } catch { /* silent */ }
+
+        await Promise.allSettled([
+          cfg.googleApiKey && cfg.googleCx
+            ? searchGoogle(q, cfg.googleApiKey, cfg.googleCx).then(r => all.push(...r)).catch(e => errs.push(`Google: ${e.message}`))
+            : null,
+          ...cfg.customApis.map(api =>
+            searchCustomApi(q, api).then(r => all.push(...r)).catch(e => errs.push(`${api.name}: ${e.message}`))
+          ),
+        ].filter(Boolean));
+
+        setResults(all);
+        setLoading(false);
+        if (all.length === 0 && errs.length > 0) setError(errs.join('\n'));
+      }, []);
+
+      const handleSaveTheme = useCallback(t => {
+        setTheme(t);
+        saveTheme(t);
+      }, []);
+
+      const handleLogout = useCallback(() => {
+        clearSession();
+        setSession(null);
+        setPage('search');
+        setResults([]);
+        setPhoneResult(null);
+        setIpResult(null);
+      }, []);
+
+      if (!session) return <AuthPage onAuth={s => setSession(s)} />;
+
+      return (
+        <>
+          {page === 'search'
+            ? <SearchPage onSearch={handleSearch} onTheme={() => setShowTheme(true)} onPricing={() => setShowPricing(true)} followSpeed={config.followSpeed} session={session} onLogout={handleLogout} />
+            : <ResultsPage key={query} query={query} results={results} phoneResult={phoneResult} ipResult={ipResult} loading={loading} error={error} config={config}
+                           onSearch={handleSearch} onTheme={() => setShowTheme(true)} onPricing={() => setShowPricing(true)}
+                           onBack={() => setPage('search')} followSpeed={config.followSpeed} session={session} onLogout={handleLogout} />
+          }
+          {showPricing && <PricingModal onClose={() => setShowPricing(false)} />}
+          {showTheme && (
+            <ThemeModal theme={theme} onSave={handleSaveTheme} onClose={() => { setShowTheme(false); applyTheme(theme); }} />
+          )}
+        </>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
