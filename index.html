@@ -2993,6 +2993,14 @@
       try { await fetch(JSONBIN_URL, { method:'PUT', headers:JSONBIN_HEADERS, body:JSON.stringify(buildRecord({ reports })) }); } catch {}
     }
 
+    const STAFF_CHAT_KEY = 'searcher_staffchat_v1';
+    function loadStaffChat()   { try { return JSON.parse(localStorage.getItem(STAFF_CHAT_KEY)) || []; } catch { return []; } }
+    function cacheStaffChat(c) { localStorage.setItem(STAFF_CHAT_KEY, JSON.stringify(c)); }
+    async function pushStaffChat(msgs) {
+      cacheStaffChat(msgs);
+      try { await fetch(JSONBIN_URL, { method:'PUT', headers:JSONBIN_HEADERS, body:JSON.stringify(buildRecord({ staffChat: msgs })) }); } catch {}
+    }
+
     const BADGE_GRANTS_KEY          = 'searcher_badge_grants_v1';
     const CONSUMED_BADGE_GRANTS_KEY = 'searcher_consumed_badge_grants_v1';
     function loadBadgeGrants() {
@@ -3020,6 +3028,7 @@
         const broadcast = data.record?.broadcast || null;
         const staffList = data.record?.staffList || [];
         const reports   = data.record?.reports   || [];
+        const staffChat = data.record?.staffChat  || [];
         cacheLeaderboard(entries);
         localStorage.setItem(PREMIUM_LIST_KEY, JSON.stringify(premiumUsers));
         cacheCreditGrants(creditGrants);
@@ -3028,6 +3037,7 @@
         cacheBroadcast(broadcast);
         cacheStaffList(staffList);
         cacheReports(reports);
+        cacheStaffChat(staffChat);
         return entries;
       } catch {
         return loadLeaderboard();
@@ -3044,6 +3054,7 @@
         broadcast: loadBroadcast(),
         staffList: loadStaffList(),
         reports:   loadReports(),
+        staffChat: loadStaffChat(),
         ...overrides,
       };
     }
@@ -5537,7 +5548,7 @@
 
       const inp = { background:'#0d0d18', border:'1px solid rgba(192,132,252,0.2)', color:'#e2e8f0', fontFamily:"'JetBrains Mono',monospace", fontSize:12, padding:'9px 12px', outline:'none', width:'100%', boxSizing:'border-box', cursor:'none' };
       const btn = (col) => ({ border:`1px solid ${col}`, color:col, background:`${col}11`, fontFamily:"'JetBrains Mono',monospace", fontSize:11, padding:'8px 16px', letterSpacing:'0.06em', cursor:'none', textTransform:'uppercase' });
-      const TABS = [{ id:'premium', label:'Premium' }, { id:'credits', label:'Crédits' }, { id:'badges', label:'Badges' }, { id:'message', label:'Message' }, { id:'blacklist', label:'Blacklist' }, { id:'staff', label:'Staff' }, { id:'reports', label:'Reports' }];
+      const TABS = [{ id:'premium', label:'Premium' }, { id:'credits', label:'Crédits' }, { id:'badges', label:'Badges' }, { id:'message', label:'Message' }, { id:'blacklist', label:'Blacklist' }, { id:'staff', label:'Staff' }, { id:'reports', label:'Reports' }, { id:'chat', label:'Chat Staff' }];
 
       return (
         <div style={{ minHeight:'100vh', background:'#07070f', fontFamily:"'JetBrains Mono',monospace", display:'flex', flexDirection:'column' }}>
@@ -5891,6 +5902,13 @@
                 </div>
               );
             })()}
+
+            {/* CHAT STAFF */}
+            {tab === 'chat' && (
+              <div style={{ height:'calc(100vh - 120px)', display:'flex', flexDirection:'column' }}>
+                <StaffChat session={session} />
+              </div>
+            )}
           </div>
           <Cursor />
         </div>
@@ -8508,13 +8526,122 @@
       );
     }
 
+    // ── Shared staff styles ───────────────────────────────────────────────────
+    const _staffMono = { fontFamily:"'JetBrains Mono',monospace" };
+    const _staffInp  = { background:'#0d0d18', border:'1px solid rgba(192,132,252,0.2)', color:'#e2e8f0', ..._staffMono, fontSize:12, padding:'9px 12px', outline:'none', width:'100%', boxSizing:'border-box', cursor:'none' };
+    const _staffBtn  = (col) => ({ border:`1px solid ${col}`, color:col, background:`${col}11`, ..._staffMono, fontSize:10, padding:'6px 14px', letterSpacing:'0.06em', cursor:'none', textTransform:'uppercase' });
+
+    // Defined OUTSIDE StaffPanel so React never remounts it on noteMap state updates
+    function StaffReportCard({ r, showEscalate, noteMap, setNoteMap, escalate, closeReport }) {
+      return (
+        <div style={{ border:'1px solid rgba(248,113,113,0.18)', background:'rgba(248,113,113,0.03)', padding:16, display:'flex', flexDirection:'column', gap:10 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+            <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+              <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                <span style={{ fontSize:9, background:'rgba(248,113,113,0.15)', color:'#f87171', padding:'2px 8px', letterSpacing:'0.08em' }}>{r.status.toUpperCase()}</span>
+                <span style={{ fontSize:12, color:'#e2e8f0' }}>
+                  <span style={{ color:'rgba(192,132,252,0.7)' }}>{r.reporterName}</span>
+                  <span style={{ color:'rgba(255,255,255,0.25)', margin:'0 6px' }}>→</span>
+                  <span style={{ color:'#f87171', fontWeight:700 }}>{r.reportedName}</span>
+                </span>
+              </div>
+              <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)' }}>{new Date(r.createdAt).toLocaleString('fr-FR')}</div>
+            </div>
+            <button onClick={() => closeReport(r.id)} style={{ ..._staffBtn('#6b7280'), padding:'4px 10px', fontSize:9 }}>Clore</button>
+          </div>
+          <div style={{ padding:'10px 12px', background:'#0d0d18', border:'1px solid rgba(255,255,255,0.06)', fontFamily:"'Geist',sans-serif", fontSize:12, color:'rgba(255,255,255,0.7)', lineHeight:1.6 }}>{r.reason}</div>
+          {r.staffNote && <div style={{ fontSize:11, color:'rgba(192,132,252,0.6)', padding:'6px 10px', background:'rgba(192,132,252,0.05)', border:'1px solid rgba(192,132,252,0.15)' }}>Note staff : {r.staffNote}</div>}
+          {showEscalate && (
+            <div style={{ display:'flex', gap:8 }}>
+              <input
+                style={{ ..._staffInp, flex:1, width:'auto' }}
+                placeholder="Note pour l'admin (optionnel)…"
+                value={noteMap[r.id] || ''}
+                onChange={e => setNoteMap(m => ({ ...m, [r.id]: e.target.value }))}
+              />
+              <button onClick={() => escalate(r.id)} style={{ ..._staffBtn('#fbbf24'), flexShrink:0 }}>⬆ Escalader</button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ── Staff Chat (shared by StaffPanel + AdminPage) ─────────────────────────
+    function StaffChat({ session }) {
+      const [msgs, setMsgs]   = useState(() => loadStaffChat());
+      const [text, setText]   = useState('');
+      const bottomRef         = React.useRef(null);
+
+      useEffect(() => {
+        const tick = () => fetchLeaderboard().then(() => setMsgs(loadStaffChat()));
+        tick();
+        const id = setInterval(tick, 5000);
+        return () => clearInterval(id);
+      }, []);
+
+      useEffect(() => {
+        bottomRef.current?.scrollIntoView({ behavior:'smooth' });
+      }, [msgs]);
+
+      const send = async () => {
+        const t = text.trim();
+        if (!t || !session) return;
+        const senderRole = isAdmin(session) ? 'admin' : 'staff';
+        const msg = { id: Date.now() + '_' + Math.random().toString(36).slice(2), sender: session.name, senderRole, text: t, ts: Date.now() };
+        const updated = [...loadStaffChat(), msg].slice(-200);
+        setText('');
+        setMsgs(updated);
+        await pushStaffChat(updated);
+      };
+
+      const roleColor = r => r === 'admin' ? '#c084fc' : '#38bdf8';
+      const roleBadge = r => r === 'admin' ? '★ Admin' : '⚑ Staff';
+
+      return (
+        <div style={{ display:'flex', flexDirection:'column', height:'100%', background:'rgba(13,13,24,0.7)', border:'1px solid rgba(192,132,252,0.1)' }}>
+          <div style={{ padding:'10px 16px', borderBottom:'1px solid rgba(192,132,252,0.1)', fontSize:9, ..._staffMono, color:'rgba(192,132,252,0.5)', letterSpacing:'0.12em', flexShrink:0 }}>
+            CHAT STAFF — TEMPS RÉEL
+          </div>
+          <div style={{ flex:1, overflowY:'auto', padding:'12px 16px', display:'flex', flexDirection:'column', gap:10 }}>
+            {msgs.length === 0 && (
+              <div style={{ fontSize:11, color:'rgba(192,132,252,0.2)', textAlign:'center', padding:'30px 0', ..._staffMono }}>Aucun message.</div>
+            )}
+            {msgs.map(m => (
+              <div key={m.id} style={{ display:'flex', flexDirection:'column', gap:3 }}>
+                <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap' }}>
+                  <span style={{ fontSize:9, color:roleColor(m.senderRole), background:`${roleColor(m.senderRole)}18`, padding:'1px 7px', letterSpacing:'0.06em', ..._staffMono, flexShrink:0 }}>{roleBadge(m.senderRole)}</span>
+                  <span style={{ fontSize:12, color:'#e2e8f0', ..._staffMono, fontWeight:600 }}>{m.sender}</span>
+                  <span style={{ fontSize:9, color:'rgba(255,255,255,0.2)', marginLeft:'auto', ..._staffMono }}>{new Date(m.ts).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</span>
+                </div>
+                <div style={{ fontSize:12, color:'rgba(255,255,255,0.72)', lineHeight:1.5, fontFamily:"'Geist',sans-serif", paddingLeft:2 }}>{m.text}</div>
+              </div>
+            ))}
+            <div ref={bottomRef} />
+          </div>
+          <div style={{ padding:'10px 12px', borderTop:'1px solid rgba(192,132,252,0.1)', display:'flex', gap:8, flexShrink:0 }}>
+            <input
+              style={{ ..._staffInp, flex:1, width:'auto', padding:'8px 12px' }}
+              placeholder="Message…"
+              value={text}
+              onChange={e => setText(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
+            />
+            <button onClick={send} style={{ ..._staffBtn('rgba(192,132,252,0.5)'), padding:'8px 16px', flexShrink:0 }}>→</button>
+          </div>
+        </div>
+      );
+    }
+
     // ── Staff Panel ───────────────────────────────────────────────────────────
     function StaffPanel({ session, onBack }) {
       const [reports, setReports] = useState(() => loadReports());
       const [noteMap, setNoteMap] = useState({});
 
       useEffect(() => {
-        fetchLeaderboard().then(() => setReports(loadReports()));
+        const tick = () => fetchLeaderboard().then(() => setReports(loadReports()));
+        tick();
+        const id = setInterval(tick, 5000);
+        return () => clearInterval(id);
       }, []);
 
       const visibleReports = reports.filter(r => r.status === 'open');
@@ -8530,63 +8657,45 @@
         setReports(updated); await pushReports(updated);
       };
 
-      const mono = { fontFamily:"'JetBrains Mono',monospace" };
-      const inp  = { background:'#0d0d18', border:'1px solid rgba(192,132,252,0.2)', color:'#e2e8f0', ...mono, fontSize:12, padding:'9px 12px', outline:'none', width:'100%', boxSizing:'border-box', cursor:'none' };
-      const btn  = (col) => ({ border:`1px solid ${col}`, color:col, background:`${col}11`, ...mono, fontSize:10, padding:'6px 14px', letterSpacing:'0.06em', cursor:'none', textTransform:'uppercase' });
-
-      const ReportCard = ({ r, showEscalate }) => (
-        <div style={{ border:'1px solid rgba(248,113,113,0.18)', background:'rgba(248,113,113,0.03)', padding:16, display:'flex', flexDirection:'column', gap:10 }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-            <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
-              <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-                <span style={{ fontSize:9, background:'rgba(248,113,113,0.15)', color:'#f87171', padding:'2px 8px', letterSpacing:'0.08em' }}>{r.status.toUpperCase()}</span>
-                <span style={{ fontSize:12, color:'#e2e8f0' }}>
-                  <span style={{ color:'rgba(192,132,252,0.7)' }}>{r.reporterName}</span>
-                  <span style={{ color:'rgba(255,255,255,0.25)', margin:'0 6px' }}>→</span>
-                  <span style={{ color:'#f87171', fontWeight:700 }}>{r.reportedName}</span>
-                </span>
-              </div>
-              <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)' }}>{new Date(r.createdAt).toLocaleString('fr-FR')}</div>
-            </div>
-            <button onClick={() => closeReport(r.id)} style={{ ...btn('#6b7280'), padding:'4px 10px', fontSize:9 }}>Clore</button>
-          </div>
-          <div style={{ padding:'10px 12px', background:'#0d0d18', border:'1px solid rgba(255,255,255,0.06)', fontFamily:"'Geist',sans-serif", fontSize:12, color:'rgba(255,255,255,0.7)', lineHeight:1.6 }}>{r.reason}</div>
-          {r.staffNote && <div style={{ fontSize:11, color:'rgba(192,132,252,0.6)', padding:'6px 10px', background:'rgba(192,132,252,0.05)', border:'1px solid rgba(192,132,252,0.15)' }}>Note staff : {r.staffNote}</div>}
-          {showEscalate && (
-            <div style={{ display:'flex', gap:8 }}>
-              <input style={{ ...inp, flex:1 }} placeholder="Note pour l'admin (optionnel)…" value={noteMap[r.id]||''} onChange={e => setNoteMap(m=>({...m,[r.id]:e.target.value}))} />
-              <button onClick={() => escalate(r.id)} style={{ ...btn('#fbbf24'), flexShrink:0 }}>⬆ Escalader</button>
-            </div>
-          )}
-        </div>
-      );
-
       return (
-        <div style={{ minHeight:'100vh', background:'#07070f', ...mono, display:'flex', flexDirection:'column', cursor:'none' }}>
+        <div style={{ minHeight:'100vh', background:'#07070f', ..._staffMono, display:'flex', flexDirection:'column', cursor:'none' }}>
+          {/* Header */}
           <div style={{ borderBottom:'1px solid rgba(192,132,252,0.2)', padding:'0 32px', display:'flex', alignItems:'center', justifyContent:'space-between', height:56, flexShrink:0 }}>
             <div style={{ display:'flex', alignItems:'center', gap:16 }}>
               <span style={{ fontSize:11, color:'#38bdf8', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>■ PANEL STAFF</span>
               <span style={{ color:'rgba(192,132,252,0.3)' }}>|</span>
               <span style={{ fontSize:11, color:'rgba(192,132,252,0.6)' }}>Bienvenue, <span style={{ color:'#7dd3fc', fontWeight:700 }}>{session?.name}</span></span>
             </div>
-            <button onClick={onBack} style={{ ...btn('rgba(192,132,252,0.6)'), padding:'6px 14px' }}>← Retour</button>
+            <button onClick={onBack} style={{ ..._staffBtn('rgba(192,132,252,0.6)'), padding:'6px 14px' }}>← Retour</button>
           </div>
-          <div style={{ flex:1, overflowY:'auto', padding:'28px 32px', maxWidth:740 }}>
-            {visibleReports.length === 0 && myEscalated.length === 0 && (
-              <div style={{ fontSize:12, color:'rgba(192,132,252,0.3)', textAlign:'center', padding:'40px 0' }}>Aucun signalement en attente.</div>
-            )}
-            {visibleReports.length > 0 && (<>
-              <div style={{ fontSize:9, color:'rgba(56,189,248,0.5)', letterSpacing:'0.1em', marginBottom:14 }}>SIGNALEMENTS OUVERTS — {visibleReports.length}</div>
-              <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:24 }}>
-                {visibleReports.map(r => <ReportCard key={r.id} r={r} showEscalate={true} />)}
-              </div>
-            </>)}
-            {myEscalated.length > 0 && (<>
-              <div style={{ fontSize:9, color:'rgba(251,191,36,0.5)', letterSpacing:'0.1em', marginBottom:14 }}>ESCALADÉS VERS ADMIN — {myEscalated.length}</div>
-              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                {myEscalated.map(r => <ReportCard key={r.id} r={r} showEscalate={false} />)}
-              </div>
-            </>)}
+          {/* Two-column body */}
+          <div style={{ flex:1, display:'flex', overflow:'hidden' }}>
+            {/* Left: reports */}
+            <div style={{ flex:1, overflowY:'auto', padding:'28px 32px' }}>
+              {visibleReports.length === 0 && myEscalated.length === 0 && (
+                <div style={{ fontSize:12, color:'rgba(192,132,252,0.3)', textAlign:'center', padding:'40px 0' }}>Aucun signalement en attente.</div>
+              )}
+              {visibleReports.length > 0 && (<>
+                <div style={{ fontSize:9, color:'rgba(56,189,248,0.5)', letterSpacing:'0.1em', marginBottom:14 }}>SIGNALEMENTS OUVERTS — {visibleReports.length}</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:24 }}>
+                  {visibleReports.map(r => (
+                    <StaffReportCard key={r.id} r={r} showEscalate={true} noteMap={noteMap} setNoteMap={setNoteMap} escalate={escalate} closeReport={closeReport} />
+                  ))}
+                </div>
+              </>)}
+              {myEscalated.length > 0 && (<>
+                <div style={{ fontSize:9, color:'rgba(251,191,36,0.5)', letterSpacing:'0.1em', marginBottom:14 }}>ESCALADÉS VERS ADMIN — {myEscalated.length}</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                  {myEscalated.map(r => (
+                    <StaffReportCard key={r.id} r={r} showEscalate={false} noteMap={noteMap} setNoteMap={setNoteMap} escalate={escalate} closeReport={closeReport} />
+                  ))}
+                </div>
+              </>)}
+            </div>
+            {/* Right: chat */}
+            <div style={{ width:320, flexShrink:0, borderLeft:'1px solid rgba(192,132,252,0.1)', display:'flex', flexDirection:'column' }}>
+              <StaffChat session={session} />
+            </div>
           </div>
           <Cursor />
         </div>
