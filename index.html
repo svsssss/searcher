@@ -2782,7 +2782,7 @@
     const BADGES_DEF = [
       { id:'rank1',     img:'https://cdn.discordapp.com/emojis/1377627719860224111.webp?size=80&animated=true',label:'#1 Classement', desc:'Premier du classement', cls:'rank1',    animated:true  },
       { id:'crown',     img:'https://cdn.discordapp.com/emojis/1436860958260592732.webp?size=80',              label:'Crown',      desc:'Admin',            cls:'crown',     animated:false },
-      { id:'staff',     img:'STAFF_BADGE_PLACEHOLDER',                                                         label:'Staff',      desc:'Équipe Searcher',  cls:'staff',     animated:false },
+      { id:'staff',     img:'https://cdn.discordapp.com/emojis/1504597600161234994.webp?size=80&animated=true',  label:'Staff',      desc:'Équipe Searcher',  cls:'staff',     animated:true  },
       { id:'dev',       img:'https://cdn.discordapp.com/emojis/1437497973633319075.webp?size=80',              label:'Dev Officiel', desc:'Développeur officiel', cls:'dev',      animated:false },
       { id:'early',     img:'https://cdn.discordapp.com/emojis/1491447771033768027.webp?size=80',              label:'Early Adopter', desc:'Membre depuis le début.', cls:'early',     animated:false },
       { id:'verified',  img:'https://cdn.discordapp.com/emojis/1325935227054460950.webp?size=80',              label:'Vérifié',       desc:'Compte vérifié',   cls:'verified',  animated:false },
@@ -5461,10 +5461,23 @@
       const [bcActive, setBcActive] = useState(() => loadBroadcast());
       const [bcMsg, setBcMsg]       = useState(null);
       const [adminReports, setAdminReports] = useState(() => loadReports());
+      const [staffList, setStaffList]       = useState(() => loadStaffList());
+      const [staffInput, setStaffInput]     = useState('');
+      const [staffMsg, setStaffMsg]         = useState(null);
 
       useEffect(() => {
-        fetchLeaderboard().then(() => setAdminReports(loadReports()));
+        fetchLeaderboard().then(() => { setAdminReports(loadReports()); setStaffList(loadStaffList()); });
       }, []);
+
+      const addStaff = async () => {
+        const name = staffInput.trim(); if (!name) return;
+        if (staffList.some(s => s.toLowerCase() === name.toLowerCase())) { setStaffMsg({ ok:false, text:`${name} est déjà staff.` }); return; }
+        const nl = [...staffList, name]; setStaffList(nl); setStaffInput('');
+        setStaffMsg({ ok:true, text:`✓ ${name} ajouté au staff.` }); await pushStaffList(nl);
+      };
+      const removeStaff = async (name) => {
+        const nl = staffList.filter(s => s.toLowerCase() !== name.toLowerCase()); setStaffList(nl); await pushStaffList(nl);
+      };
 
       const addBlacklist = () => {
         const name = blName.trim(); if (!name) return;
@@ -5524,7 +5537,7 @@
 
       const inp = { background:'#0d0d18', border:'1px solid rgba(192,132,252,0.2)', color:'#e2e8f0', fontFamily:"'JetBrains Mono',monospace", fontSize:12, padding:'9px 12px', outline:'none', width:'100%', boxSizing:'border-box', cursor:'none' };
       const btn = (col) => ({ border:`1px solid ${col}`, color:col, background:`${col}11`, fontFamily:"'JetBrains Mono',monospace", fontSize:11, padding:'8px 16px', letterSpacing:'0.06em', cursor:'none', textTransform:'uppercase' });
-      const TABS = [{ id:'premium', label:'Premium' }, { id:'credits', label:'Crédits' }, { id:'badges', label:'Badges' }, { id:'message', label:'Message' }, { id:'blacklist', label:'Blacklist' }, { id:'reports', label:'Reports' }];
+      const TABS = [{ id:'premium', label:'Premium' }, { id:'credits', label:'Crédits' }, { id:'badges', label:'Badges' }, { id:'message', label:'Message' }, { id:'blacklist', label:'Blacklist' }, { id:'staff', label:'Staff' }, { id:'reports', label:'Reports' }];
 
       return (
         <div style={{ minHeight:'100vh', background:'#07070f', fontFamily:"'JetBrains Mono',monospace", display:'flex', flexDirection:'column' }}>
@@ -5788,6 +5801,30 @@
                     </div>
                   ))}
                   {blList.length===0 && <div style={{ padding:'20px 0', fontSize:12, color:'rgba(192,132,252,0.3)', textAlign:'center' }}>Aucun utilisateur blacklisté.</div>}
+                </div>
+              </div>
+            )}
+
+            {/* STAFF */}
+            {tab === 'staff' && (
+              <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                <div style={{ fontSize:10, color:'rgba(56,189,248,0.5)', letterSpacing:'0.1em', marginBottom:4 }}>GÉRER LE STAFF</div>
+                <div style={{ display:'flex', gap:8 }}>
+                  <input style={inp} placeholder="Pseudo Discord exact…" value={staffInput} onChange={e=>setStaffInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addStaff()} />
+                  <button onClick={addStaff} disabled={!staffInput.trim()} style={{ ...btn('#38bdf8'), flexShrink:0, opacity:!staffInput.trim()?0.4:1 }}>+ Ajouter</button>
+                </div>
+                {staffMsg && <div style={{ padding:'8px 12px', fontSize:12, background:staffMsg.ok?'rgba(74,222,128,0.08)':'rgba(248,113,113,0.08)', color:staffMsg.ok?'#4ade80':'#f87171', border:`1px solid ${staffMsg.ok?'rgba(74,222,128,0.2)':'rgba(248,113,113,0.2)'}` }}>{staffMsg.text}</div>}
+                <div style={{ display:'flex', flexDirection:'column' }}>
+                  {staffList.map(name => (
+                    <div key={name} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', borderBottom:'1px solid rgba(56,189,248,0.1)', background:'rgba(56,189,248,0.03)' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                        <span style={{ fontSize:9, background:'rgba(56,189,248,0.15)', color:'#38bdf8', padding:'2px 8px', letterSpacing:'0.08em' }}>STAFF</span>
+                        <span style={{ fontSize:13, color:'#e2e8f0' }}>{name}</span>
+                      </div>
+                      <button onClick={()=>removeStaff(name)} style={{ ...btn('#f87171'), padding:'4px 12px', fontSize:10 }}>Retirer</button>
+                    </div>
+                  ))}
+                  {staffList.length===0 && <div style={{ padding:'20px 0', fontSize:12, color:'rgba(192,132,252,0.3)', textAlign:'center' }}>Aucun staff.</div>}
                 </div>
               </div>
             )}
@@ -8469,19 +8506,11 @@
 
     // ── Staff Panel ───────────────────────────────────────────────────────────
     function StaffPanel({ session, onBack }) {
-      const [reports, setReports]     = useState(() => loadReports());
-      const [staffList, setStaffList] = useState(() => loadStaffList());
-      const [tab, setTab]             = useState('reports');
-      const [noteMap, setNoteMap]     = useState({});
-      const [staffInput, setStaffInput] = useState('');
-      const [staffMsg, setStaffMsg]   = useState(null);
-      const admin = isAdmin(session);
+      const [reports, setReports] = useState(() => loadReports());
+      const [noteMap, setNoteMap] = useState({});
 
       useEffect(() => {
-        fetchLeaderboard().then(() => {
-          setReports(loadReports());
-          setStaffList(loadStaffList());
-        });
+        fetchLeaderboard().then(() => setReports(loadReports()));
       }, []);
 
       const visibleReports = reports.filter(r => r.status === 'open');
@@ -8490,28 +8519,16 @@
       const escalate = async (id) => {
         const note = noteMap[id] || '';
         const updated = reports.map(r => r.id === id ? { ...r, status:'escalated', staffNote: note, escalatedBy: session.name, escalatedAt: Date.now() } : r);
-        setReports(updated);
-        await pushReports(updated);
+        setReports(updated); await pushReports(updated);
       };
       const closeReport = async (id) => {
         const updated = reports.map(r => r.id === id ? { ...r, status:'closed', closedBy: session.name, closedAt: Date.now() } : r);
-        setReports(updated);
-        await pushReports(updated);
-      };
-      const addStaff = async () => {
-        const name = staffInput.trim(); if (!name) return;
-        if (staffList.some(s => s.toLowerCase() === name.toLowerCase())) { setStaffMsg('Déjà staff.'); return; }
-        const nl = [...staffList, name]; setStaffList(nl); setStaffInput('');
-        setStaffMsg(`✓ ${name} ajouté au staff.`); await pushStaffList(nl);
-      };
-      const removeStaff = async (name) => {
-        const nl = staffList.filter(s => s.toLowerCase() !== name.toLowerCase()); setStaffList(nl); await pushStaffList(nl);
+        setReports(updated); await pushReports(updated);
       };
 
       const mono = { fontFamily:"'JetBrains Mono',monospace" };
       const inp  = { background:'#0d0d18', border:'1px solid rgba(192,132,252,0.2)', color:'#e2e8f0', ...mono, fontSize:12, padding:'9px 12px', outline:'none', width:'100%', boxSizing:'border-box', cursor:'none' };
       const btn  = (col) => ({ border:`1px solid ${col}`, color:col, background:`${col}11`, ...mono, fontSize:10, padding:'6px 14px', letterSpacing:'0.06em', cursor:'none', textTransform:'uppercase' });
-      const TABS = [{ id:'reports', label:'Signalements' }, ...(admin ? [{ id:'staff', label:'Staff' }] : [])];
 
       const ReportCard = ({ r, showEscalate }) => (
         <div style={{ border:'1px solid rgba(248,113,113,0.18)', background:'rgba(248,113,113,0.03)', padding:16, display:'flex', flexDirection:'column', gap:10 }}>
@@ -8525,7 +8542,7 @@
                   <span style={{ color:'#f87171', fontWeight:700 }}>{r.reportedName}</span>
                 </span>
               </div>
-              <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginLeft:0 }}>{new Date(r.createdAt).toLocaleString('fr-FR')}</div>
+              <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)' }}>{new Date(r.createdAt).toLocaleString('fr-FR')}</div>
             </div>
             <button onClick={() => closeReport(r.id)} style={{ ...btn('#6b7280'), padding:'4px 10px', fontSize:9 }}>Clore</button>
           </div>
@@ -8541,7 +8558,7 @@
       );
 
       return (
-        <div style={{ minHeight:'100vh', background:'#07070f', ...mono, display:'flex', flexDirection:'column' }}>
+        <div style={{ minHeight:'100vh', background:'#07070f', ...mono, display:'flex', flexDirection:'column', cursor:'none' }}>
           <div style={{ borderBottom:'1px solid rgba(192,132,252,0.2)', padding:'0 32px', display:'flex', alignItems:'center', justifyContent:'space-between', height:56, flexShrink:0 }}>
             <div style={{ display:'flex', alignItems:'center', gap:16 }}>
               <span style={{ fontSize:11, color:'#38bdf8', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>■ PANEL STAFF</span>
@@ -8550,47 +8567,20 @@
             </div>
             <button onClick={onBack} style={{ ...btn('rgba(192,132,252,0.6)'), padding:'6px 14px' }}>← Retour</button>
           </div>
-          <div style={{ display:'flex', borderBottom:'1px solid rgba(192,132,252,0.15)', flexShrink:0 }}>
-            {TABS.map(t => (
-              <button key={t.id} onClick={()=>setTab(t.id)} style={{ padding:'12px 24px', background:'none', border:'none', borderBottom:tab===t.id?'2px solid #38bdf8':'2px solid transparent', color:tab===t.id?'#38bdf8':'rgba(56,189,248,0.35)', fontSize:11, letterSpacing:'0.08em', textTransform:'uppercase', cursor:'none', ...mono, marginBottom:-1 }}>{t.label}</button>
-            ))}
-          </div>
           <div style={{ flex:1, overflowY:'auto', padding:'28px 32px', maxWidth:740 }}>
-            {tab === 'reports' && (<>
-              {visibleReports.length === 0 && myEscalated.length === 0 && (
-                <div style={{ fontSize:12, color:'rgba(192,132,252,0.3)', textAlign:'center', padding:'40px 0' }}>Aucun signalement en attente.</div>
-              )}
-              {visibleReports.length > 0 && (<>
-                <div style={{ fontSize:9, color:'rgba(56,189,248,0.5)', letterSpacing:'0.1em', marginBottom:14 }}>SIGNALEMENTS OUVERTS — {visibleReports.length}</div>
-                <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:24 }}>
-                  {visibleReports.map(r => <ReportCard key={r.id} r={r} showEscalate={true} />)}
-                </div>
-              </>)}
-              {myEscalated.length > 0 && (<>
-                <div style={{ fontSize:9, color:'rgba(251,191,36,0.5)', letterSpacing:'0.1em', marginBottom:14 }}>ESCALADÉS VERS ADMIN — {myEscalated.length}</div>
-                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                  {myEscalated.map(r => <ReportCard key={r.id} r={r} showEscalate={false} />)}
-                </div>
-              </>)}
-            </>)}
-            {tab === 'staff' && admin && (<>
-              <div style={{ fontSize:9, color:'rgba(56,189,248,0.5)', letterSpacing:'0.1em', marginBottom:14 }}>GÉRER LE STAFF</div>
-              <div style={{ display:'flex', gap:8, marginBottom:12 }}>
-                <input style={inp} placeholder="Pseudo Discord exact…" value={staffInput} onChange={e=>setStaffInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addStaff()} />
-                <button onClick={addStaff} disabled={!staffInput.trim()} style={{ ...btn('#38bdf8'), flexShrink:0, opacity:!staffInput.trim()?0.4:1 }}>+ Ajouter</button>
+            {visibleReports.length === 0 && myEscalated.length === 0 && (
+              <div style={{ fontSize:12, color:'rgba(192,132,252,0.3)', textAlign:'center', padding:'40px 0' }}>Aucun signalement en attente.</div>
+            )}
+            {visibleReports.length > 0 && (<>
+              <div style={{ fontSize:9, color:'rgba(56,189,248,0.5)', letterSpacing:'0.1em', marginBottom:14 }}>SIGNALEMENTS OUVERTS — {visibleReports.length}</div>
+              <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:24 }}>
+                {visibleReports.map(r => <ReportCard key={r.id} r={r} showEscalate={true} />)}
               </div>
-              {staffMsg && <div style={{ padding:'8px 12px', fontSize:12, color:'#4ade80', background:'rgba(74,222,128,0.06)', border:'1px solid rgba(74,222,128,0.2)', marginBottom:12 }}>{staffMsg}</div>}
-              <div style={{ display:'flex', flexDirection:'column' }}>
-                {staffList.map(name => (
-                  <div key={name} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', borderBottom:'1px solid rgba(56,189,248,0.1)', background:'rgba(56,189,248,0.03)' }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <span style={{ fontSize:9, background:'rgba(56,189,248,0.15)', color:'#38bdf8', padding:'2px 8px', letterSpacing:'0.08em' }}>STAFF</span>
-                      <span style={{ fontSize:13, color:'#e2e8f0' }}>{name}</span>
-                    </div>
-                    <button onClick={()=>removeStaff(name)} style={{ ...btn('#f87171'), padding:'4px 12px', fontSize:10 }}>Retirer</button>
-                  </div>
-                ))}
-                {staffList.length===0 && <div style={{ padding:'20px 0', fontSize:12, color:'rgba(192,132,252,0.3)', textAlign:'center' }}>Aucun staff.</div>}
+            </>)}
+            {myEscalated.length > 0 && (<>
+              <div style={{ fontSize:9, color:'rgba(251,191,36,0.5)', letterSpacing:'0.1em', marginBottom:14 }}>ESCALADÉS VERS ADMIN — {myEscalated.length}</div>
+              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                {myEscalated.map(r => <ReportCard key={r.id} r={r} showEscalate={false} />)}
               </div>
             </>)}
           </div>
