@@ -2212,6 +2212,8 @@
     .plan-premium { background: rgba(245,158,11,0.15); color: #f59e0b;   border: 1px solid rgba(245,158,11,0.35); }
     .plan-admin   { background: rgba(248,113,113,0.15); color: #f87171;  border: 1px solid rgba(248,113,113,0.35); }
     .plan-staff   { background: rgba(56,189,248,0.12);  color: #38bdf8;  border: 1px solid rgba(56,189,248,0.3); }
+    .chat-scroll  { scrollbar-width: none; }
+    .chat-scroll::-webkit-scrollbar { display: none; }
     .sidebar-nav { flex: 1; padding: 8px 0; overflow-y: auto; scrollbar-width: none; }
     .sidebar-nav::-webkit-scrollbar { display: none; }
     .sidebar-item {
@@ -5551,7 +5553,7 @@
       const TABS = [{ id:'premium', label:'Premium' }, { id:'credits', label:'Crédits' }, { id:'badges', label:'Badges' }, { id:'message', label:'Message' }, { id:'blacklist', label:'Blacklist' }, { id:'staff', label:'Staff' }, { id:'reports', label:'Reports' }, { id:'chat', label:'Chat Staff' }];
 
       return (
-        <div style={{ minHeight:'100vh', background:'#07070f', fontFamily:"'JetBrains Mono',monospace", display:'flex', flexDirection:'column' }}>
+        <div style={{ height:'100vh', background:'#07070f', fontFamily:"'JetBrains Mono',monospace", display:'flex', flexDirection:'column' }}>
           <div style={{ borderBottom:'1px solid rgba(192,132,252,0.2)', padding:'0 32px', display:'flex', alignItems:'center', justifyContent:'space-between', height:56, flexShrink:0 }}>
             <div style={{ display:'flex', alignItems:'center', gap:16 }}>
               <span style={{ fontSize:11, color:'#f87171', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>■ PANEL ADMIN</span>
@@ -5573,7 +5575,12 @@
               <button key={t.id} onClick={()=>setTab(t.id)} style={{ padding:'12px 24px', background:'none', border:'none', borderBottom:tab===t.id?'2px solid #c084fc':'2px solid transparent', color:tab===t.id?'#c084fc':'rgba(192,132,252,0.35)', fontSize:11, letterSpacing:'0.08em', textTransform:'uppercase', cursor:'none', fontFamily:"'JetBrains Mono',monospace", marginBottom:-1 }}>{t.label}</button>
             ))}
           </div>
-          <div style={{ flex:1, overflowY:'auto', padding:'28px 32px', maxWidth:720 }}>
+          {tab === 'chat' && (
+            <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column' }}>
+              <StaffChat session={session} />
+            </div>
+          )}
+          <div style={{ flex:1, overflowY:'auto', padding:'28px 32px', maxWidth:720, display: tab === 'chat' ? 'none' : undefined }}>
             {/* Placeholder for old modal-body content */}
             <div style={{ display: tab === '_legacy' ? 'flex' : 'none', flexDirection:'column', gap:14 }}>
               <div style={{ display:'flex', gap:8 }}>
@@ -5903,12 +5910,6 @@
               );
             })()}
 
-            {/* CHAT STAFF */}
-            {tab === 'chat' && (
-              <div style={{ height:'calc(100vh - 120px)', display:'flex', flexDirection:'column' }}>
-                <StaffChat session={session} />
-              </div>
-            )}
           </div>
           <Cursor />
         </div>
@@ -8586,6 +8587,13 @@
       const send = async () => {
         const t = text.trim();
         if (!t || !session) return;
+        if (t === '/clear') {
+          if (!isAdmin(session)) return;
+          setText('');
+          setMsgs([]);
+          await pushStaffChat([]);
+          return;
+        }
         const senderRole = isAdmin(session) ? 'admin' : 'staff';
         const msg = { id: Date.now() + '_' + Math.random().toString(36).slice(2), sender: session.name, senderRole, text: t, ts: Date.now() };
         const updated = [...loadStaffChat(), msg].slice(-200);
@@ -8598,11 +8606,11 @@
       const roleBadge = r => r === 'admin' ? '★ Admin' : '⚑ Staff';
 
       return (
-        <div style={{ display:'flex', flexDirection:'column', height:'100%', background:'rgba(13,13,24,0.7)', border:'1px solid rgba(192,132,252,0.1)' }}>
+        <div style={{ display:'flex', flexDirection:'column', flex:1, minHeight:0, background:'rgba(13,13,24,0.7)', border:'1px solid rgba(192,132,252,0.1)' }}>
           <div style={{ padding:'10px 16px', borderBottom:'1px solid rgba(192,132,252,0.1)', fontSize:9, ..._staffMono, color:'rgba(192,132,252,0.5)', letterSpacing:'0.12em', flexShrink:0 }}>
             CHAT STAFF — TEMPS RÉEL
           </div>
-          <div style={{ flex:1, overflowY:'auto', padding:'12px 16px', display:'flex', flexDirection:'column', gap:10 }}>
+          <div className="chat-scroll" style={{ flex:1, minHeight:0, overflowY:'auto', padding:'12px 16px', display:'flex', flexDirection:'column', gap:10 }}>
             {msgs.length === 0 && (
               <div style={{ fontSize:11, color:'rgba(192,132,252,0.2)', textAlign:'center', padding:'30px 0', ..._staffMono }}>Aucun message.</div>
             )}
@@ -8658,7 +8666,7 @@
       };
 
       return (
-        <div style={{ minHeight:'100vh', background:'#07070f', ..._staffMono, display:'flex', flexDirection:'column', cursor:'none' }}>
+        <div style={{ height:'100vh', background:'#07070f', ..._staffMono, display:'flex', flexDirection:'column', cursor:'none' }}>
           {/* Header */}
           <div style={{ borderBottom:'1px solid rgba(192,132,252,0.2)', padding:'0 32px', display:'flex', alignItems:'center', justifyContent:'space-between', height:56, flexShrink:0 }}>
             <div style={{ display:'flex', alignItems:'center', gap:16 }}>
@@ -8669,11 +8677,11 @@
             <button onClick={onBack} style={{ ..._staffBtn('rgba(192,132,252,0.6)'), padding:'6px 14px' }}>← Retour</button>
           </div>
           {/* Two-column body */}
-          <div style={{ flex:1, display:'flex', overflow:'hidden' }}>
+          <div style={{ flex:1, minHeight:0, display:'flex', overflow:'hidden' }}>
             {/* Left: reports */}
-            <div style={{ flex:1, overflowY:'auto', padding:'28px 32px' }}>
+            <div style={{ flex:1, minWidth:0, overflowY:'auto', padding:'28px 32px' }}>
               {visibleReports.length === 0 && myEscalated.length === 0 && (
-                <div style={{ fontSize:12, color:'rgba(192,132,252,0.3)', textAlign:'center', padding:'40px 0' }}>Aucun signalement en attente.</div>
+                <div style={{ fontSize:12, color:'rgba(192,132,252,0.45)', textAlign:'center', padding:'40px 0' }}>Aucun signalement en attente.</div>
               )}
               {visibleReports.length > 0 && (<>
                 <div style={{ fontSize:9, color:'rgba(56,189,248,0.5)', letterSpacing:'0.1em', marginBottom:14 }}>SIGNALEMENTS OUVERTS — {visibleReports.length}</div>
@@ -8693,7 +8701,7 @@
               </>)}
             </div>
             {/* Right: chat */}
-            <div style={{ width:320, flexShrink:0, borderLeft:'1px solid rgba(192,132,252,0.1)', display:'flex', flexDirection:'column' }}>
+            <div style={{ width:340, flexShrink:0, borderLeft:'1px solid rgba(192,132,252,0.1)', display:'flex', flexDirection:'column', minHeight:0 }}>
               <StaffChat session={session} />
             </div>
           </div>
