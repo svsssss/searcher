@@ -2945,7 +2945,20 @@
 
     const BLACKLIST_KEY  = 'searcher_blacklist_v1';
     const BROADCAST_KEY  = 'searcher_broadcast_v1';
-    function loadBlacklist()  { try { return JSON.parse(localStorage.getItem(BLACKLIST_KEY))  || []; } catch { return []; } }
+    const DISCORD_SERVER = 'https://discord.gg/';
+    function loadBlacklist() {
+      try {
+        const raw = JSON.parse(localStorage.getItem(BLACKLIST_KEY)) || [];
+        return raw.map(e => typeof e === 'string' ? { name: e, reason: '' } : e);
+      } catch { return []; }
+    }
+    function isBlacklisted(session) {
+      if (!session) return null;
+      const name = (session.name || '').toLowerCase();
+      const id = session.id || '';
+      const list = loadBlacklist();
+      return list.find(e => e.name.toLowerCase() === name || (id && e.id === id)) || null;
+    }
     function cacheBlacklist(l){ localStorage.setItem(BLACKLIST_KEY, JSON.stringify(l)); }
     function loadBroadcast()  { try { return JSON.parse(localStorage.getItem(BROADCAST_KEY)) || null; } catch { return null; } }
     function cacheBroadcast(m){ localStorage.setItem(BROADCAST_KEY, JSON.stringify(m)); }
@@ -5412,6 +5425,7 @@
       const [bdId, setBdId]         = useState('');
       const [bdMsg, setBdMsg]       = useState(null);
       const [blName, setBlName]     = useState('');
+      const [blReason, setBlReason] = useState('');
       const [blList, setBlList]     = useState(() => loadBlacklist());
       const [blMsg, setBlMsg]       = useState(null);
       const [bcText, setBcText]     = useState('');
@@ -5420,11 +5434,11 @@
 
       const addBlacklist = () => {
         const name = blName.trim(); if (!name) return;
-        if (blList.some(u => u.toLowerCase() === name.toLowerCase())) { setBlMsg({ ok:false, text:`${name} est déjà blacklisté.` }); return; }
-        const newList = [...blList, name]; setBlList(newList); setBlName('');
+        if (blList.some(u => u.name.toLowerCase() === name.toLowerCase())) { setBlMsg({ ok:false, text:`${name} est déjà blacklisté.` }); return; }
+        const newList = [...blList, { name, reason: blReason.trim() }]; setBlList(newList); setBlName(''); setBlReason('');
         setBlMsg({ ok:true, text:`✓ ${name} blacklisté.` }); pushBlacklist(newList);
       };
-      const removeBlacklist = name => { const nl = blList.filter(u=>u.toLowerCase()!==name.toLowerCase()); setBlList(nl); pushBlacklist(nl); };
+      const removeBlacklist = name => { const nl = blList.filter(u=>u.name.toLowerCase()!==name.toLowerCase()); setBlList(nl); pushBlacklist(nl); };
       const sendBroadcast = () => {
         const text = bcText.trim(); if (!text) return;
         const msg = { text, createdAt: Date.now() }; setBcActive(msg); setBcText('');
@@ -5720,19 +5734,23 @@
             {tab === 'blacklist' && (
               <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
                 <div style={{ fontSize:10, color:'rgba(192,132,252,0.5)', letterSpacing:'0.1em', marginBottom:4 }}>BLACKLISTER UN UTILISATEUR</div>
+                <input style={inp} placeholder="Pseudo Discord exact…" value={blName} onChange={e=>setBlName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addBlacklist()} />
                 <div style={{ display:'flex', gap:8 }}>
-                  <input style={inp} placeholder="Pseudo Discord exact…" value={blName} onChange={e=>setBlName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addBlacklist()} />
+                  <input style={{ ...inp, flex:1 }} placeholder="Raison (optionnelle)…" value={blReason} onChange={e=>setBlReason(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addBlacklist()} />
                   <button onClick={addBlacklist} disabled={!blName.trim()} style={{ ...btn('#f87171'), flexShrink:0, opacity:!blName.trim()?0.4:1 }}>Blacklist</button>
                 </div>
                 {blMsg && <div style={{ padding:'8px 12px', fontSize:12, background:'rgba(248,113,113,0.08)', color:'#f87171', border:'1px solid rgba(248,113,113,0.2)' }}>{blMsg.text}</div>}
                 <div style={{ display:'flex', flexDirection:'column' }}>
-                  {blList.map(name => (
-                    <div key={name} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', borderBottom:'1px solid rgba(248,113,113,0.1)', background:'rgba(248,113,113,0.03)' }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                        <span style={{ fontSize:9, background:'rgba(248,113,113,0.15)', color:'#f87171', padding:'2px 8px', letterSpacing:'0.08em' }}>BLOQUÉ</span>
-                        <span style={{ fontSize:13, color:'#e2e8f0' }}>{name}</span>
+                  {blList.map(entry => (
+                    <div key={entry.name} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', borderBottom:'1px solid rgba(248,113,113,0.1)', background:'rgba(248,113,113,0.03)' }}>
+                      <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                          <span style={{ fontSize:9, background:'rgba(248,113,113,0.15)', color:'#f87171', padding:'2px 8px', letterSpacing:'0.08em' }}>BLOQUÉ</span>
+                          <span style={{ fontSize:13, color:'#e2e8f0' }}>{entry.name}</span>
+                        </div>
+                        {entry.reason && <span style={{ fontSize:11, color:'rgba(252,165,165,0.5)', fontFamily:"'Geist',sans-serif", marginLeft:0 }}>{entry.reason}</span>}
                       </div>
-                      <button onClick={()=>removeBlacklist(name)} style={{ ...btn('#4ade80'), padding:'4px 12px', fontSize:10 }}>Débloquer</button>
+                      <button onClick={()=>removeBlacklist(entry.name)} style={{ ...btn('#4ade80'), padding:'4px 12px', fontSize:10 }}>Débloquer</button>
                     </div>
                   ))}
                   {blList.length===0 && <div style={{ padding:'20px 0', fontSize:12, color:'rgba(192,132,252,0.3)', textAlign:'center' }}>Aucun utilisateur blacklisté.</div>}
@@ -8283,6 +8301,34 @@
       return null;
     }
 
+    // ── Banned Page ───────────────────────────────────────────────────────────
+    function BannedPage({ entry }) {
+      return (
+        <div style={{ minHeight:'100vh', background:'#09090f', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:20, fontFamily:"'JetBrains Mono',monospace", padding:32, textAlign:'center' }}>
+          <div style={{ fontSize:11, color:'rgba(248,113,113,0.5)', letterSpacing:'0.2em' }}>■ SEARCHER</div>
+          <div style={{ width:72, height:72, border:'1.5px solid #f87171', display:'flex', alignItems:'center', justifyContent:'center', marginTop:8 }}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" fill="#f87171"/></svg>
+          </div>
+          <div style={{ fontSize:18, color:'#f87171', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>ACCÈS REFUSÉ</div>
+          <div style={{ fontSize:13, color:'rgba(248,113,113,0.7)', maxWidth:400, lineHeight:1.6 }}>
+            Un administrateur a suspendu votre compte.
+          </div>
+          {entry?.reason && (
+            <div style={{ padding:'12px 20px', border:'1px solid rgba(248,113,113,0.25)', background:'rgba(248,113,113,0.05)', maxWidth:420 }}>
+              <div style={{ fontSize:9, color:'rgba(248,113,113,0.45)', letterSpacing:'0.1em', marginBottom:6 }}>RAISON</div>
+              <div style={{ fontSize:13, color:'#fca5a5', fontFamily:"'Geist',sans-serif" }}>{entry.reason}</div>
+            </div>
+          )}
+          <div style={{ width:280, height:1, background:'rgba(248,113,113,0.15)', margin:'4px 0' }} />
+          <div style={{ fontSize:12, color:'rgba(192,132,252,0.5)' }}>Pour envisager un déban, rejoignez le serveur Discord :</div>
+          <a href={DISCORD_SERVER} target="_blank" rel="noopener noreferrer" style={{ color:'#c084fc', fontSize:12, letterSpacing:'0.06em', border:'1px solid rgba(192,132,252,0.3)', padding:'9px 20px', textDecoration:'none', background:'rgba(192,132,252,0.06)', display:'inline-flex', alignItems:'center', gap:8, cursor:'pointer' }}>
+            <svg width="18" height="14" viewBox="0 0 71 55" fill="none"><path d="M60.1 4.9A58.5 58.5 0 0 0 45.7.7a.2.2 0 0 0-.2.1 40.8 40.8 0 0 0-1.8 3.7 54 54 0 0 0-16.2 0 37.5 37.5 0 0 0-1.8-3.7.2.2 0 0 0-.2-.1A58.3 58.3 0 0 0 11.1 4.9a.2.2 0 0 0-.1.1C1.5 19.1-1 32.9.3 46.5a.2.2 0 0 0 .1.1 58.8 58.8 0 0 0 17.7 8.9.2.2 0 0 0 .2-.1 42 42 0 0 0 3.6-5.9.2.2 0 0 0-.1-.3 38.7 38.7 0 0 1-5.5-2.6.2.2 0 0 1 0-.4c.4-.3.7-.6 1.1-.9a.2.2 0 0 1 .2 0c11.5 5.3 24 5.3 35.4 0a.2.2 0 0 1 .2 0c.4.3.7.6 1.1.9a.2.2 0 0 1 0 .4 36.4 36.4 0 0 1-5.5 2.6.2.2 0 0 0-.1.3c1 2 2.2 4 3.6 5.9a.2.2 0 0 0 .2.1 58.7 58.7 0 0 0 17.8-8.9.2.2 0 0 0 .1-.1C73.2 30.7 69.7 17 60.2 5a.2.2 0 0 0-.1-.1ZM23.7 38.1c-3.5 0-6.4-3.2-6.4-7.2s2.8-7.2 6.4-7.2c3.6 0 6.5 3.3 6.4 7.2 0 4-2.9 7.2-6.4 7.2Zm23.7 0c-3.5 0-6.4-3.2-6.4-7.2s2.8-7.2 6.4-7.2c3.6 0 6.5 3.3 6.4 7.2 0 4-2.8 7.2-6.4 7.2Z" fill="#c084fc"/></svg>
+            Rejoindre le Discord
+          </a>
+        </div>
+      );
+    }
+
     // ── App ───────────────────────────────────────────────────────────────────
     function App() {
       const [tsVerified, setTsVerified] = useState(() => sessionStorage.getItem('ts_ok') === '1');
@@ -8702,6 +8748,8 @@
         </div>
       );
       if (!session) return <AuthPage onAuth={s => setSession(s)} />;
+      const bannedEntry = isBlacklisted(session);
+      if (bannedEntry) return <BannedPage entry={bannedEntry} />;
 
       return (
         <>
