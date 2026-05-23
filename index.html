@@ -8304,27 +8304,35 @@
     // ── Banned Page ───────────────────────────────────────────────────────────
     function BannedPage({ entry }) {
       return (
-        <div style={{ minHeight:'100vh', background:'#09090f', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:20, fontFamily:"'JetBrains Mono',monospace", padding:32, textAlign:'center' }}>
-          <div style={{ fontSize:11, color:'rgba(248,113,113,0.5)', letterSpacing:'0.2em' }}>■ SEARCHER</div>
-          <div style={{ width:72, height:72, border:'1.5px solid #f87171', display:'flex', alignItems:'center', justifyContent:'center', marginTop:8 }}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" fill="#f87171"/></svg>
-          </div>
-          <div style={{ fontSize:18, color:'#f87171', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>ACCÈS REFUSÉ</div>
-          <div style={{ fontSize:13, color:'rgba(248,113,113,0.7)', maxWidth:400, lineHeight:1.6 }}>
-            Un administrateur a suspendu votre compte.
-          </div>
-          {entry?.reason && (
-            <div style={{ padding:'12px 20px', border:'1px solid rgba(248,113,113,0.25)', background:'rgba(248,113,113,0.05)', maxWidth:420 }}>
-              <div style={{ fontSize:9, color:'rgba(248,113,113,0.45)', letterSpacing:'0.1em', marginBottom:6 }}>RAISON</div>
-              <div style={{ fontSize:13, color:'#fca5a5', fontFamily:"'Geist',sans-serif" }}>{entry.reason}</div>
+        <div style={{ minHeight:'100vh', position:'relative', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:20, fontFamily:"'JetBrains Mono',monospace", padding:32, textAlign:'center', overflow:'hidden' }}>
+          {/* Banner background */}
+          <div style={{ position:'absolute', inset:0, backgroundImage:"url('https://raw.githubusercontent.com/svsssss/searcher/main/searcher-banner.png')", backgroundSize:'cover', backgroundPosition:'center', backgroundRepeat:'no-repeat', filter:'brightness(0.22) blur(2px)', transform:'scale(1.05)' }} />
+          {/* Dark overlay */}
+          <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.55)' }} />
+          {/* Content */}
+          <div style={{ position:'relative', zIndex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:20 }}>
+            <div style={{ fontSize:11, color:'rgba(248,113,113,0.6)', letterSpacing:'0.2em' }}>■ SEARCHER</div>
+            <div style={{ width:72, height:72, border:'1.5px solid #f87171', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" fill="#f87171"/></svg>
             </div>
-          )}
-          <div style={{ width:280, height:1, background:'rgba(248,113,113,0.15)', margin:'4px 0' }} />
-          <div style={{ fontSize:12, color:'rgba(192,132,252,0.5)' }}>Pour envisager un déban, rejoignez le serveur Discord :</div>
-          <a href={DISCORD_SERVER} target="_blank" rel="noopener noreferrer" style={{ color:'#c084fc', fontSize:12, letterSpacing:'0.06em', border:'1px solid rgba(192,132,252,0.3)', padding:'9px 20px', textDecoration:'none', background:'rgba(192,132,252,0.06)', display:'inline-flex', alignItems:'center', gap:8, cursor:'pointer' }}>
-            <svg width="18" height="14" viewBox="0 0 71 55" fill="none"><path d="M60.1 4.9A58.5 58.5 0 0 0 45.7.7a.2.2 0 0 0-.2.1 40.8 40.8 0 0 0-1.8 3.7 54 54 0 0 0-16.2 0 37.5 37.5 0 0 0-1.8-3.7.2.2 0 0 0-.2-.1A58.3 58.3 0 0 0 11.1 4.9a.2.2 0 0 0-.1.1C1.5 19.1-1 32.9.3 46.5a.2.2 0 0 0 .1.1 58.8 58.8 0 0 0 17.7 8.9.2.2 0 0 0 .2-.1 42 42 0 0 0 3.6-5.9.2.2 0 0 0-.1-.3 38.7 38.7 0 0 1-5.5-2.6.2.2 0 0 1 0-.4c.4-.3.7-.6 1.1-.9a.2.2 0 0 1 .2 0c11.5 5.3 24 5.3 35.4 0a.2.2 0 0 1 .2 0c.4.3.7.6 1.1.9a.2.2 0 0 1 0 .4 36.4 36.4 0 0 1-5.5 2.6.2.2 0 0 0-.1.3c1 2 2.2 4 3.6 5.9a.2.2 0 0 0 .2.1 58.7 58.7 0 0 0 17.8-8.9.2.2 0 0 0 .1-.1C73.2 30.7 69.7 17 60.2 5a.2.2 0 0 0-.1-.1ZM23.7 38.1c-3.5 0-6.4-3.2-6.4-7.2s2.8-7.2 6.4-7.2c3.6 0 6.5 3.3 6.4 7.2 0 4-2.9 7.2-6.4 7.2Zm23.7 0c-3.5 0-6.4-3.2-6.4-7.2s2.8-7.2 6.4-7.2c3.6 0 6.5 3.3 6.4 7.2 0 4-2.8 7.2-6.4 7.2Z" fill="#c084fc"/></svg>
-            Rejoindre le Discord
-          </a>
+            <div style={{ fontSize:18, color:'#f87171', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>ACCÈS REFUSÉ</div>
+            <div style={{ fontSize:13, color:'rgba(248,113,113,0.75)', maxWidth:400, lineHeight:1.6 }}>
+              Un administrateur a suspendu votre compte.
+            </div>
+            {entry?.reason && (
+              <div style={{ padding:'12px 20px', border:'1px solid rgba(248,113,113,0.25)', background:'rgba(0,0,0,0.5)', maxWidth:420, backdropFilter:'blur(8px)' }}>
+                <div style={{ fontSize:9, color:'rgba(248,113,113,0.45)', letterSpacing:'0.1em', marginBottom:6 }}>RAISON</div>
+                <div style={{ fontSize:13, color:'#fca5a5', fontFamily:"'Geist',sans-serif" }}>{entry.reason}</div>
+              </div>
+            )}
+            <div style={{ width:280, height:1, background:'rgba(248,113,113,0.15)', margin:'4px 0' }} />
+            <div style={{ fontSize:12, color:'rgba(192,132,252,0.6)' }}>Pour envisager un déban, rejoignez le serveur Discord :</div>
+            <a href={DISCORD_SERVER} target="_blank" rel="noopener noreferrer" style={{ color:'#c084fc', fontSize:12, letterSpacing:'0.06em', border:'1px solid rgba(192,132,252,0.35)', padding:'9px 20px', textDecoration:'none', background:'rgba(0,0,0,0.5)', display:'inline-flex', alignItems:'center', gap:8, cursor:'none', backdropFilter:'blur(8px)' }}>
+              <svg width="18" height="14" viewBox="0 0 71 55" fill="none"><path d="M60.1 4.9A58.5 58.5 0 0 0 45.7.7a.2.2 0 0 0-.2.1 40.8 40.8 0 0 0-1.8 3.7 54 54 0 0 0-16.2 0 37.5 37.5 0 0 0-1.8-3.7.2.2 0 0 0-.2-.1A58.3 58.3 0 0 0 11.1 4.9a.2.2 0 0 0-.1.1C1.5 19.1-1 32.9.3 46.5a.2.2 0 0 0 .1.1 58.8 58.8 0 0 0 17.7 8.9.2.2 0 0 0 .2-.1 42 42 0 0 0 3.6-5.9.2.2 0 0 0-.1-.3 38.7 38.7 0 0 1-5.5-2.6.2.2 0 0 1 0-.4c.4-.3.7-.6 1.1-.9a.2.2 0 0 1 .2 0c11.5 5.3 24 5.3 35.4 0a.2.2 0 0 1 .2 0c.4.3.7.6 1.1.9a.2.2 0 0 1 0 .4 36.4 36.4 0 0 1-5.5 2.6.2.2 0 0 0-.1.3c1 2 2.2 4 3.6 5.9a.2.2 0 0 0 .2.1 58.7 58.7 0 0 0 17.8-8.9.2.2 0 0 0 .1-.1C73.2 30.7 69.7 17 60.2 5a.2.2 0 0 0-.1-.1ZM23.7 38.1c-3.5 0-6.4-3.2-6.4-7.2s2.8-7.2 6.4-7.2c3.6 0 6.5 3.3 6.4 7.2 0 4-2.9 7.2-6.4 7.2Zm23.7 0c-3.5 0-6.4-3.2-6.4-7.2s2.8-7.2 6.4-7.2c3.6 0 6.5 3.3 6.4 7.2 0 4-2.8 7.2-6.4 7.2Z" fill="#c084fc"/></svg>
+              Rejoindre le Discord
+            </a>
+          </div>
+          <Cursor />
         </div>
       );
     }
