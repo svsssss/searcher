@@ -2943,6 +2943,21 @@
       localStorage.setItem(CONSUMED_GRANTS_KEY, JSON.stringify(arr));
     }
 
+    const BLACKLIST_KEY  = 'searcher_blacklist_v1';
+    const BROADCAST_KEY  = 'searcher_broadcast_v1';
+    function loadBlacklist()  { try { return JSON.parse(localStorage.getItem(BLACKLIST_KEY))  || []; } catch { return []; } }
+    function cacheBlacklist(l){ localStorage.setItem(BLACKLIST_KEY, JSON.stringify(l)); }
+    function loadBroadcast()  { try { return JSON.parse(localStorage.getItem(BROADCAST_KEY)) || null; } catch { return null; } }
+    function cacheBroadcast(m){ localStorage.setItem(BROADCAST_KEY, JSON.stringify(m)); }
+    async function pushBlacklist(list) {
+      cacheBlacklist(list);
+      try { await fetch(JSONBIN_URL, { method:'PUT', headers:JSONBIN_HEADERS, body:JSON.stringify(buildRecord({ blacklist: list })) }); } catch {}
+    }
+    async function pushBroadcast(msg) {
+      cacheBroadcast(msg);
+      try { await fetch(JSONBIN_URL, { method:'PUT', headers:JSONBIN_HEADERS, body:JSON.stringify(buildRecord({ broadcast: msg })) }); } catch {}
+    }
+
     const BADGE_GRANTS_KEY          = 'searcher_badge_grants_v1';
     const CONSUMED_BADGE_GRANTS_KEY = 'searcher_consumed_badge_grants_v1';
     function loadBadgeGrants() {
@@ -2966,10 +2981,14 @@
         const premiumUsers = data.record?.premiumUsers || [];
         const creditGrants = data.record?.creditGrants || [];
         const badgeGrants = data.record?.badgeGrants || [];
+        const blacklist = data.record?.blacklist || [];
+        const broadcast = data.record?.broadcast || null;
         cacheLeaderboard(entries);
         localStorage.setItem(PREMIUM_LIST_KEY, JSON.stringify(premiumUsers));
         cacheCreditGrants(creditGrants);
         cacheBadgeGrants(badgeGrants);
+        cacheBlacklist(blacklist);
+        cacheBroadcast(broadcast);
         return entries;
       } catch {
         return loadLeaderboard();
@@ -2982,6 +3001,8 @@
         premiumUsers: loadPremiumList(),
         creditGrants: loadCreditGrants(),
         badgeGrants: loadBadgeGrants(),
+        blacklist: loadBlacklist(),
+        broadcast: loadBroadcast(),
         ...overrides,
       };
     }
@@ -5379,7 +5400,8 @@
 
     // ── Sidebar ──────────────────────────────────────────────────────────────────
     // ── Admin Modal ───────────────────────────────────────────────────────────
-    function AdminModal({ visible, onClose, onPremiumUpdate }) {
+    function AdminPage({ session, onBack, onPremiumUpdate }) {
+      const [tab, setTab]           = useState('premium');
       const [list, setList]         = useState(() => loadPremiumList());
       const [input, setInput]       = useState('');
       const [msg, setMsg]           = useState(null);
@@ -5389,8 +5411,26 @@
       const [bdName, setBdName]     = useState('');
       const [bdId, setBdId]         = useState('');
       const [bdMsg, setBdMsg]       = useState(null);
+      const [blName, setBlName]     = useState('');
+      const [blList, setBlList]     = useState(() => loadBlacklist());
+      const [blMsg, setBlMsg]       = useState(null);
+      const [bcText, setBcText]     = useState('');
+      const [bcActive, setBcActive] = useState(() => loadBroadcast());
+      const [bcMsg, setBcMsg]       = useState(null);
 
-      useEffect(() => { if (!visible) { setInput(''); setMsg(null); setCrName(''); setCrAmount(''); setCrMsg(null); setBdName(''); setBdId(''); setBdMsg(null); } }, [visible]);
+      const addBlacklist = () => {
+        const name = blName.trim(); if (!name) return;
+        if (blList.some(u => u.toLowerCase() === name.toLowerCase())) { setBlMsg({ ok:false, text:`${name} est déjà blacklisté.` }); return; }
+        const newList = [...blList, name]; setBlList(newList); setBlName('');
+        setBlMsg({ ok:true, text:`✓ ${name} blacklisté.` }); pushBlacklist(newList);
+      };
+      const removeBlacklist = name => { const nl = blList.filter(u=>u.toLowerCase()!==name.toLowerCase()); setBlList(nl); pushBlacklist(nl); };
+      const sendBroadcast = () => {
+        const text = bcText.trim(); if (!text) return;
+        const msg = { text, createdAt: Date.now() }; setBcActive(msg); setBcText('');
+        setBcMsg({ ok:true, text:'✓ Message envoyé à tous les utilisateurs.' }); pushBroadcast(msg);
+      };
+      const clearBroadcast = () => { setBcActive(null); setBcMsg({ ok:true, text:'✓ Message retiré.' }); pushBroadcast(null); };
 
       const sendBadge = (action) => {
         const name = bdName.trim();
@@ -5434,17 +5474,36 @@
         pushPremiumList(newList);
       };
 
+      const inp = { background:'#0d0d18', border:'1px solid rgba(192,132,252,0.2)', color:'#e2e8f0', fontFamily:"'JetBrains Mono',monospace", fontSize:12, padding:'9px 12px', outline:'none', width:'100%', boxSizing:'border-box', cursor:'none' };
+      const btn = (col) => ({ border:`1px solid ${col}`, color:col, background:`${col}11`, fontFamily:"'JetBrains Mono',monospace", fontSize:11, padding:'8px 16px', letterSpacing:'0.06em', cursor:'none', textTransform:'uppercase' });
+      const TABS = [{ id:'premium', label:'Premium' }, { id:'credits', label:'Crédits' }, { id:'badges', label:'Badges' }, { id:'message', label:'Message' }, { id:'blacklist', label:'Blacklist' }];
+
       return (
-        <div className="modal-overlay" onClick={onClose} style={{ display: visible ? undefined : 'none' }}>
-          <div className="modal" style={{ width:'min(420px,100%)' }} onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <span style={{ display:'flex', alignItems:'center', gap:8 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.8"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
-                Panel Admin — Premium
-              </span>
-              <button className="modal-close" onClick={onClose}>✕</button>
+        <div style={{ minHeight:'100vh', background:'#07070f', fontFamily:"'JetBrains Mono',monospace", display:'flex', flexDirection:'column' }}>
+          <div style={{ borderBottom:'1px solid rgba(192,132,252,0.2)', padding:'0 32px', display:'flex', alignItems:'center', justifyContent:'space-between', height:56, flexShrink:0 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:16 }}>
+              <span style={{ fontSize:11, color:'#f87171', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>■ PANEL ADMIN</span>
+              <span style={{ color:'rgba(192,132,252,0.3)' }}>|</span>
+              <span style={{ fontSize:11, color:'rgba(192,132,252,0.6)' }}>Bienvenue, <span style={{ color:'#c084fc', fontWeight:700 }}>{session?.name || 'Admin'}</span></span>
             </div>
-            <div className="modal-body" style={{ gap:14 }}>
+            <button onClick={onBack} style={{ ...btn('rgba(192,132,252,0.6)'), padding:'6px 14px' }}>← Retour</button>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', borderBottom:'1px solid rgba(192,132,252,0.12)' }}>
+            {[{ label:'PREMIUM', value:list.length, color:'#fbbf24' }, { label:'BLACKLISTÉS', value:blList.length, color:'#f87171' }, { label:'ADMINS', value:ADMIN_NAMES.length, color:'#f87171' }, { label:'BROADCAST', value:bcActive?'ACTIF':'INACTIF', color:bcActive?'#4ade80':'#6b7280' }].map((s,i) => (
+              <div key={i} style={{ padding:'16px 24px', borderRight:i<3?'1px solid rgba(192,132,252,0.1)':'none' }}>
+                <div style={{ fontSize:9, color:'rgba(192,132,252,0.4)', letterSpacing:'0.1em', marginBottom:6 }}>{s.label}</div>
+                <div style={{ fontSize:22, fontWeight:700, color:s.color }}>{s.value}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display:'flex', borderBottom:'1px solid rgba(192,132,252,0.15)', flexShrink:0 }}>
+            {TABS.map(t => (
+              <button key={t.id} onClick={()=>setTab(t.id)} style={{ padding:'12px 24px', background:'none', border:'none', borderBottom:tab===t.id?'2px solid #c084fc':'2px solid transparent', color:tab===t.id?'#c084fc':'rgba(192,132,252,0.35)', fontSize:11, letterSpacing:'0.08em', textTransform:'uppercase', cursor:'none', fontFamily:"'JetBrains Mono',monospace", marginBottom:-1 }}>{t.label}</button>
+            ))}
+          </div>
+          <div style={{ flex:1, overflowY:'auto', padding:'28px 32px', maxWidth:720 }}>
+            {/* Placeholder for old modal-body content */}
+            <div style={{ display: tab === '_legacy' ? 'flex' : 'none', flexDirection:'column', gap:14 }}>
               <div style={{ display:'flex', gap:8 }}>
                 <input
                   type="text" placeholder="Pseudo Discord exact…" value={input}
@@ -5570,12 +5629,116 @@
                   − Retirer
                 </button>
               </div>
-              {bdMsg && (
-                <div style={{ padding:'8px 12px', borderRadius:8, fontSize:12, marginTop:8, background:'rgba(139,92,246,0.1)', color:'#a78bfa' }}>
-                  {bdMsg.text}
-                </div>
-              )}
+              {bdMsg && <div style={{ padding:'8px 12px', fontSize:12, marginTop:8, background:'rgba(139,92,246,0.1)', color:'#a78bfa' }}>{bdMsg.text}</div>}
             </div>
+
+            {/* PREMIUM */}
+            {tab === 'premium' && (
+              <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                <div style={{ fontSize:10, color:'rgba(192,132,252,0.5)', letterSpacing:'0.1em', marginBottom:4 }}>AJOUTER UN ABONNÉ PREMIUM</div>
+                <div style={{ display:'flex', gap:8 }}>
+                  <input style={inp} placeholder="Pseudo Discord exact…" value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&add()} />
+                  <button onClick={add} disabled={!input.trim()} style={{ ...btn('#c084fc'), flexShrink:0, opacity:!input.trim()?0.4:1 }}>Ajouter</button>
+                </div>
+                {msg && <div style={{ padding:'8px 12px', fontSize:12, background:msg.ok?'rgba(74,222,128,0.08)':'rgba(248,113,113,0.08)', color:msg.ok?'#4ade80':'#f87171', border:`1px solid ${msg.ok?'rgba(74,222,128,0.2)':'rgba(248,113,113,0.2)'}` }}>{msg.text}</div>}
+                <div style={{ display:'flex', flexDirection:'column' }}>
+                  {ADMIN_NAMES.map(name => (
+                    <div key={name} style={{ display:'flex', alignItems:'center', padding:'10px 14px', borderBottom:'1px solid rgba(192,132,252,0.08)', background:'rgba(248,113,113,0.04)', gap:10 }}>
+                      <span style={{ fontSize:9, background:'rgba(248,113,113,0.15)', color:'#f87171', padding:'2px 8px', letterSpacing:'0.08em' }}>ADMIN</span>
+                      <span style={{ fontSize:13, color:'#e2e8f0' }}>{name}</span>
+                    </div>
+                  ))}
+                  {list.map(name => (
+                    <div key={name} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', borderBottom:'1px solid rgba(192,132,252,0.08)' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                        <span style={{ fontSize:9, background:'rgba(251,191,36,0.15)', color:'#fbbf24', padding:'2px 8px', letterSpacing:'0.08em' }}>PREMIUM</span>
+                        <span style={{ fontSize:13, color:'#e2e8f0' }}>{name}</span>
+                      </div>
+                      <button onClick={()=>remove(name)} style={{ ...btn('#f87171'), padding:'4px 12px', fontSize:10 }}>Retirer</button>
+                    </div>
+                  ))}
+                  {list.length===0 && <div style={{ padding:'20px 0', fontSize:12, color:'rgba(192,132,252,0.3)', textAlign:'center' }}>Aucun abonné premium.</div>}
+                </div>
+              </div>
+            )}
+
+            {/* CRÉDITS */}
+            {tab === 'credits' && (
+              <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                <div style={{ fontSize:10, color:'rgba(192,132,252,0.5)', letterSpacing:'0.1em', marginBottom:4 }}>GÉRER LES CRÉDITS</div>
+                <input style={inp} placeholder="Pseudo Discord exact" value={crName} onChange={e=>setCrName(e.target.value)} />
+                <input style={inp} type="number" placeholder="Montant" value={crAmount} min="1" onChange={e=>setCrAmount(e.target.value)} />
+                <div style={{ display:'flex', gap:8 }}>
+                  <button onClick={()=>sendCredits(1)} disabled={!crName.trim()||!crAmount} style={{ ...btn('#4ade80'), flex:1, opacity:(!crName.trim()||!crAmount)?0.4:1 }}>+ Donner</button>
+                  <button onClick={()=>sendCredits(-1)} disabled={!crName.trim()||!crAmount} style={{ ...btn('#f87171'), flex:1, opacity:(!crName.trim()||!crAmount)?0.4:1 }}>− Retirer</button>
+                </div>
+                {crMsg && <div style={{ padding:'8px 12px', fontSize:12, background:'rgba(74,222,128,0.08)', color:'#4ade80', border:'1px solid rgba(74,222,128,0.2)' }}>{crMsg.text}</div>}
+              </div>
+            )}
+
+            {/* BADGES */}
+            {tab === 'badges' && (
+              <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                <div style={{ fontSize:10, color:'rgba(192,132,252,0.5)', letterSpacing:'0.1em', marginBottom:4 }}>DONNER / RETIRER UN BADGE</div>
+                <input style={inp} placeholder="Pseudo Discord exact" value={bdName} onChange={e=>setBdName(e.target.value)} />
+                <div style={{ display:'flex', flexWrap:'wrap', gap:6, padding:'12px', border:'1px solid rgba(192,132,252,0.15)', background:'#0d0d18' }}>
+                  {BADGES_DEF.filter(b=>b.id!=='rank1').map(b => (
+                    <div key={b.id} title={b.label} onClick={()=>setBdId(bdId===b.id?'':b.id)} style={{ width:36, height:36, display:'flex', alignItems:'center', justifyContent:'center', cursor:'none', background:bdId===b.id?'rgba(192,132,252,0.2)':'transparent', border:`1px solid ${bdId===b.id?'rgba(192,132,252,0.5)':'rgba(192,132,252,0.1)'}`, opacity:bdId&&bdId!==b.id?0.35:1 }}>
+                      <img src={b.img} alt={b.label} style={{ width:22, height:22, objectFit:'contain' }} />
+                    </div>
+                  ))}
+                </div>
+                {bdId && <div style={{ fontSize:10, color:'#c084fc', letterSpacing:'0.06em' }}>SÉLECTIONNÉ : {BADGES_DEF.find(b=>b.id===bdId)?.label}</div>}
+                <div style={{ display:'flex', gap:8 }}>
+                  <button onClick={()=>sendBadge('give')} disabled={!bdName.trim()||!bdId} style={{ ...btn('#c084fc'), flex:1, opacity:(!bdName.trim()||!bdId)?0.4:1 }}>+ Donner</button>
+                  <button onClick={()=>sendBadge('revoke')} disabled={!bdName.trim()||!bdId} style={{ ...btn('#f87171'), flex:1, opacity:(!bdName.trim()||!bdId)?0.4:1 }}>− Retirer</button>
+                </div>
+                {bdMsg && <div style={{ padding:'8px 12px', fontSize:12, background:'rgba(192,132,252,0.08)', color:'#c084fc', border:'1px solid rgba(192,132,252,0.2)' }}>{bdMsg.text}</div>}
+              </div>
+            )}
+
+            {/* MESSAGE GLOBAL */}
+            {tab === 'message' && (
+              <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                <div style={{ fontSize:10, color:'rgba(192,132,252,0.5)', letterSpacing:'0.1em', marginBottom:4 }}>MESSAGE GLOBAL À TOUS LES UTILISATEURS</div>
+                {bcActive && (
+                  <div style={{ padding:'12px 16px', background:'rgba(74,222,128,0.06)', border:'1px solid rgba(74,222,128,0.2)', display:'flex', justifyContent:'space-between', alignItems:'center', gap:12 }}>
+                    <div>
+                      <div style={{ fontSize:9, color:'#4ade80', letterSpacing:'0.08em', marginBottom:4 }}>BROADCAST ACTIF</div>
+                      <div style={{ fontSize:13, color:'#e2e8f0', fontFamily:"'Geist',sans-serif" }}>{bcActive.text}</div>
+                    </div>
+                    <button onClick={clearBroadcast} style={{ ...btn('#f87171'), flexShrink:0, fontSize:10, padding:'5px 12px' }}>Retirer</button>
+                  </div>
+                )}
+                <textarea style={{ ...inp, minHeight:100, resize:'vertical', fontFamily:"'Geist',sans-serif", fontSize:13 }} placeholder="Message affiché à tous les utilisateurs connectés…" value={bcText} onChange={e=>setBcText(e.target.value)} />
+                <button onClick={sendBroadcast} disabled={!bcText.trim()} style={{ ...btn('#fbbf24'), opacity:!bcText.trim()?0.4:1 }}>⚡ Envoyer à tous</button>
+                {bcMsg && <div style={{ padding:'8px 12px', fontSize:12, background:'rgba(74,222,128,0.08)', color:'#4ade80', border:'1px solid rgba(74,222,128,0.2)' }}>{bcMsg.text}</div>}
+              </div>
+            )}
+
+            {/* BLACKLIST */}
+            {tab === 'blacklist' && (
+              <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                <div style={{ fontSize:10, color:'rgba(192,132,252,0.5)', letterSpacing:'0.1em', marginBottom:4 }}>BLACKLISTER UN UTILISATEUR</div>
+                <div style={{ display:'flex', gap:8 }}>
+                  <input style={inp} placeholder="Pseudo Discord exact…" value={blName} onChange={e=>setBlName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addBlacklist()} />
+                  <button onClick={addBlacklist} disabled={!blName.trim()} style={{ ...btn('#f87171'), flexShrink:0, opacity:!blName.trim()?0.4:1 }}>Blacklist</button>
+                </div>
+                {blMsg && <div style={{ padding:'8px 12px', fontSize:12, background:'rgba(248,113,113,0.08)', color:'#f87171', border:'1px solid rgba(248,113,113,0.2)' }}>{blMsg.text}</div>}
+                <div style={{ display:'flex', flexDirection:'column' }}>
+                  {blList.map(name => (
+                    <div key={name} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', borderBottom:'1px solid rgba(248,113,113,0.1)', background:'rgba(248,113,113,0.03)' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                        <span style={{ fontSize:9, background:'rgba(248,113,113,0.15)', color:'#f87171', padding:'2px 8px', letterSpacing:'0.08em' }}>BLOQUÉ</span>
+                        <span style={{ fontSize:13, color:'#e2e8f0' }}>{name}</span>
+                      </div>
+                      <button onClick={()=>removeBlacklist(name)} style={{ ...btn('#4ade80'), padding:'4px 12px', fontSize:10 }}>Débloquer</button>
+                    </div>
+                  ))}
+                  {blList.length===0 && <div style={{ padding:'20px 0', fontSize:12, color:'rgba(192,132,252,0.3)', textAlign:'center' }}>Aucun utilisateur blacklisté.</div>}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       );
@@ -8157,8 +8320,13 @@
         return s.date !== new Date().toISOString().slice(0, 10);
       }, [showMiniGame]);
       const [credits, setCredits] = useState(() => loadCredits().balance);
+      const [broadcastMsg, setBroadcastMsg] = useState(() => loadBroadcast());
+      const [broadcastDismissed, setBroadcastDismissed] = useState(false);
+      useEffect(() => {
+        const interval = setInterval(() => { const b = loadBroadcast(); setBroadcastMsg(b); }, 30000);
+        return () => clearInterval(interval);
+      }, []);
       const [premiumList, setPremiumList] = useState(() => loadPremiumList());
-      const [showAdmin, setShowAdmin] = useState(false);
       const [viewedEntry, setViewedEntry] = useState(null);
       const [toast, setToast] = useState(null);
       const showToast = msg => { setToast(msg); setTimeout(() => setToast(null), 3500); };
@@ -8552,8 +8720,20 @@
               </button>
             </div>
           )}
+          {broadcastMsg && !broadcastDismissed && (
+            <div style={{ position:'fixed', top: showAnnouncement ? 48 : 0, left:0, right:0, zIndex:9998, background:'linear-gradient(90deg,#0f1a0a,#0a1a0d)', borderBottom:'1px solid rgba(74,222,128,0.3)', padding:'10px 20px', display:'flex', alignItems:'center', gap:12, fontFamily:"'Geist',sans-serif" }}>
+              <span style={{ fontSize:15 }}>📢</span>
+              <div style={{ flex:1, fontSize:13, color:'#86efac' }}>
+                <strong style={{ color:'#4ade80' }}>Message Admin :</strong>
+                <span style={{ marginLeft:8, color:'rgba(134,239,172,0.8)' }}>{broadcastMsg.text}</span>
+              </div>
+              <button onClick={() => setBroadcastDismissed(true)} style={{ background:'rgba(74,222,128,0.1)', border:'1px solid rgba(74,222,128,0.25)', color:'#4ade80', padding:'4px 14px', borderRadius:4, cursor:'pointer', fontSize:12, fontFamily:"'JetBrains Mono',monospace", flexShrink:0 }}>OK</button>
+            </div>
+          )}
           {page === 'view-profile' && viewedEntry
             ? <ProfileViewer entry={viewedEntry} onBack={() => setPage('leaderboard')} session={session} />
+            : page === 'admin'
+              ? <AdminPage session={session} onBack={() => setPage('search')} onPremiumUpdate={list => setPremiumList(list)} />
             : page === 'leaderboard'
               ? <LeaderboardPage session={session} onBack={() => setPage('search')} onViewProfile={e => { setViewedEntry(e); setPage('view-profile'); }} />
               : page === 'dashboard'
@@ -8565,13 +8745,12 @@
                     : page === 'bulk'
                       ? <BulkEmailPage onBack={() => setPage('search')} />
                       : page === 'search'
-                        ? <SearchPage onSearch={handleSearch} onTheme={() => setShowTheme(true)} onPricing={() => setShowPricing(true)} onProfile={() => setPage('dashboard')} onRedeem={() => setShowRedeem(true)} onPatchnote={() => setPage('patchnote')} onLeaderboard={() => setPage('leaderboard')} onMiniGame={() => setShowMiniGame(true)} miniGameAvailable={miniGameAvailable} credits={credits} followSpeed={config.followSpeed} session={session} onLogout={handleLogout} onAdmin={() => setShowAdmin(true)} onBulk={() => setPage('bulk')} />
+                        ? <SearchPage onSearch={handleSearch} onTheme={() => setShowTheme(true)} onPricing={() => setShowPricing(true)} onProfile={() => setPage('dashboard')} onRedeem={() => setShowRedeem(true)} onPatchnote={() => setPage('patchnote')} onLeaderboard={() => setPage('leaderboard')} onMiniGame={() => setShowMiniGame(true)} miniGameAvailable={miniGameAvailable} credits={credits} followSpeed={config.followSpeed} session={session} onLogout={handleLogout} onAdmin={() => setPage('admin')} onBulk={() => setPage('bulk')} />
                         : <ResultsPage key={query} query={query} results={results} phoneResult={phoneResult} ipResult={ipResult} whoisResult={whoisResult} shodanResult={shodanResult} personResult={personResult} emailResult={emailResult} imageResult={imageResult} decoderResult={decoderResult} usernameResult={usernameResult} tiktokResult={tiktokResult} breachResult={breachResult} hudsonResult={hudsonResult} steamResult={steamResult} loading={loading} error={error} config={config}
                                        onSearch={handleSearch} onTheme={() => setShowTheme(true)} onPricing={() => setShowPricing(true)} onProfile={() => setPage('dashboard')} onRedeem={() => setShowRedeem(true)} onPatchnote={() => setPage('patchnote')} onLeaderboard={() => setPage('leaderboard')} onMiniGame={() => setShowMiniGame(true)} miniGameAvailable={miniGameAvailable} credits={credits}
-                                       onBack={() => setPage('search')} followSpeed={config.followSpeed} session={session} onLogout={handleLogout} onAdmin={() => setShowAdmin(true)} onBulk={() => setPage('bulk')} />
+                                       onBack={() => setPage('search')} followSpeed={config.followSpeed} session={session} onLogout={handleLogout} onAdmin={() => setPage('admin')} onBulk={() => setPage('bulk')} />
           }
           <PricingModal onClose={() => setShowPricing(false)} visible={showPricing} />
-          <AdminModal visible={showAdmin} onClose={() => setShowAdmin(false)} onPremiumUpdate={list => setPremiumList(list)} />
           <ThemeModal theme={theme} onSave={handleSaveTheme}
             onApply={() => setShowTheme(false)}
             onClose={() => { setShowTheme(false); applyTheme(theme); }}
