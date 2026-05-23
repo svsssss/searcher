@@ -2211,6 +2211,7 @@
     .plan-free    { background: rgba(37,99,255,0.10);  color: var(--blue); border: 1px solid rgba(37,99,255,0.22); }
     .plan-premium { background: rgba(245,158,11,0.15); color: #f59e0b;   border: 1px solid rgba(245,158,11,0.35); }
     .plan-admin   { background: rgba(248,113,113,0.15); color: #f87171;  border: 1px solid rgba(248,113,113,0.35); }
+    .plan-staff   { background: rgba(56,189,248,0.12);  color: #38bdf8;  border: 1px solid rgba(56,189,248,0.3); }
     .sidebar-nav { flex: 1; padding: 8px 0; overflow-y: auto; scrollbar-width: none; }
     .sidebar-nav::-webkit-scrollbar { display: none; }
     .sidebar-item {
@@ -2781,6 +2782,7 @@
     const BADGES_DEF = [
       { id:'rank1',     img:'https://cdn.discordapp.com/emojis/1377627719860224111.webp?size=80&animated=true',label:'#1 Classement', desc:'Premier du classement', cls:'rank1',    animated:true  },
       { id:'crown',     img:'https://cdn.discordapp.com/emojis/1436860958260592732.webp?size=80',              label:'Crown',      desc:'Admin',            cls:'crown',     animated:false },
+      { id:'staff',     img:'STAFF_BADGE_PLACEHOLDER',                                                         label:'Staff',      desc:'Équipe Searcher',  cls:'staff',     animated:false },
       { id:'dev',       img:'https://cdn.discordapp.com/emojis/1437497973633319075.webp?size=80',              label:'Dev Officiel', desc:'Développeur officiel', cls:'dev',      animated:false },
       { id:'early',     img:'https://cdn.discordapp.com/emojis/1491447771033768027.webp?size=80',              label:'Early Adopter', desc:'Membre depuis le début.', cls:'early',     animated:false },
       { id:'verified',  img:'https://cdn.discordapp.com/emojis/1325935227054460950.webp?size=80',              label:'Vérifié',       desc:'Compte vérifié',   cls:'verified',  animated:false },
@@ -2971,6 +2973,26 @@
       try { await fetch(JSONBIN_URL, { method:'PUT', headers:JSONBIN_HEADERS, body:JSON.stringify(buildRecord({ broadcast: msg })) }); } catch {}
     }
 
+    const STAFF_LIST_KEY = 'searcher_stafflist_v1';
+    const REPORTS_KEY    = 'searcher_reports_v1';
+    function loadStaffList()   { try { return JSON.parse(localStorage.getItem(STAFF_LIST_KEY)) || []; } catch { return []; } }
+    function cacheStaffList(l) { localStorage.setItem(STAFF_LIST_KEY, JSON.stringify(l)); }
+    function loadReports()     { try { return JSON.parse(localStorage.getItem(REPORTS_KEY)) || []; } catch { return []; } }
+    function cacheReports(r)   { localStorage.setItem(REPORTS_KEY, JSON.stringify(r)); }
+    function isStaff(session) {
+      if (!session || isAdmin(session)) return false;
+      const name = (session.name || '').toLowerCase();
+      return loadStaffList().some(s => s.toLowerCase() === name);
+    }
+    async function pushStaffList(list) {
+      cacheStaffList(list);
+      try { await fetch(JSONBIN_URL, { method:'PUT', headers:JSONBIN_HEADERS, body:JSON.stringify(buildRecord({ staffList: list })) }); } catch {}
+    }
+    async function pushReports(reports) {
+      cacheReports(reports);
+      try { await fetch(JSONBIN_URL, { method:'PUT', headers:JSONBIN_HEADERS, body:JSON.stringify(buildRecord({ reports })) }); } catch {}
+    }
+
     const BADGE_GRANTS_KEY          = 'searcher_badge_grants_v1';
     const CONSUMED_BADGE_GRANTS_KEY = 'searcher_consumed_badge_grants_v1';
     function loadBadgeGrants() {
@@ -2996,12 +3018,16 @@
         const badgeGrants = data.record?.badgeGrants || [];
         const blacklist = data.record?.blacklist || [];
         const broadcast = data.record?.broadcast || null;
+        const staffList = data.record?.staffList || [];
+        const reports   = data.record?.reports   || [];
         cacheLeaderboard(entries);
         localStorage.setItem(PREMIUM_LIST_KEY, JSON.stringify(premiumUsers));
         cacheCreditGrants(creditGrants);
         cacheBadgeGrants(badgeGrants);
         cacheBlacklist(blacklist);
         cacheBroadcast(broadcast);
+        cacheStaffList(staffList);
+        cacheReports(reports);
         return entries;
       } catch {
         return loadLeaderboard();
@@ -3016,6 +3042,8 @@
         badgeGrants: loadBadgeGrants(),
         blacklist: loadBlacklist(),
         broadcast: loadBroadcast(),
+        staffList: loadStaffList(),
+        reports:   loadReports(),
         ...overrides,
       };
     }
@@ -5244,7 +5272,7 @@
     }
 
     // ── Results Page ──────────────────────────────────────────────────────────
-    function ResultsPage({ query, results, loading, error, phoneResult, ipResult, whoisResult, shodanResult, personResult, emailResult, imageResult, decoderResult, usernameResult, tiktokResult, breachResult, hudsonResult, steamResult, config, onSearch, onTheme, onPricing, onPatchnote, onRedeem, onLeaderboard, onMiniGame, miniGameAvailable, credits, onBack, followSpeed, session, onLogout, onProfile, onAdmin, onBulk }) {
+    function ResultsPage({ query, results, loading, error, phoneResult, ipResult, whoisResult, shodanResult, personResult, emailResult, imageResult, decoderResult, usernameResult, tiktokResult, breachResult, hudsonResult, steamResult, config, onSearch, onTheme, onPricing, onPatchnote, onRedeem, onLeaderboard, onMiniGame, miniGameAvailable, credits, onBack, followSpeed, session, onLogout, onProfile, onAdmin, onBulk, onStaff }) {
       const [input, setInput] = useState(query);
 
       const submit = e => { e.preventDefault(); if (input.trim()) onSearch(input.trim()); };
@@ -5285,6 +5313,7 @@
             onLogout={onLogout}
             onAdmin={onAdmin}
             onBulk={onBulk}
+            onStaff={onStaff}
           />
 
           <div className="corner tr">
@@ -5431,6 +5460,11 @@
       const [bcText, setBcText]     = useState('');
       const [bcActive, setBcActive] = useState(() => loadBroadcast());
       const [bcMsg, setBcMsg]       = useState(null);
+      const [adminReports, setAdminReports] = useState(() => loadReports());
+
+      useEffect(() => {
+        fetchLeaderboard().then(() => setAdminReports(loadReports()));
+      }, []);
 
       const addBlacklist = () => {
         const name = blName.trim(); if (!name) return;
@@ -5490,7 +5524,7 @@
 
       const inp = { background:'#0d0d18', border:'1px solid rgba(192,132,252,0.2)', color:'#e2e8f0', fontFamily:"'JetBrains Mono',monospace", fontSize:12, padding:'9px 12px', outline:'none', width:'100%', boxSizing:'border-box', cursor:'none' };
       const btn = (col) => ({ border:`1px solid ${col}`, color:col, background:`${col}11`, fontFamily:"'JetBrains Mono',monospace", fontSize:11, padding:'8px 16px', letterSpacing:'0.06em', cursor:'none', textTransform:'uppercase' });
-      const TABS = [{ id:'premium', label:'Premium' }, { id:'credits', label:'Crédits' }, { id:'badges', label:'Badges' }, { id:'message', label:'Message' }, { id:'blacklist', label:'Blacklist' }];
+      const TABS = [{ id:'premium', label:'Premium' }, { id:'credits', label:'Crédits' }, { id:'badges', label:'Badges' }, { id:'message', label:'Message' }, { id:'blacklist', label:'Blacklist' }, { id:'reports', label:'Reports' }];
 
       return (
         <div style={{ minHeight:'100vh', background:'#07070f', fontFamily:"'JetBrains Mono',monospace", display:'flex', flexDirection:'column' }}>
@@ -5757,13 +5791,76 @@
                 </div>
               </div>
             )}
+
+            {/* REPORTS */}
+            {tab === 'reports' && (() => {
+              const escalated = adminReports.filter(r => r.status === 'escalated');
+              const all       = adminReports.filter(r => r.status !== 'closed');
+              const closed    = adminReports.filter(r => r.status === 'closed');
+
+              const banFromReport = async (r) => {
+                const reason = r.staffNote || r.reason;
+                const newBl = [...blList, { name: r.reportedName, reason }];
+                setBlList(newBl);
+                pushBlacklist(newBl);
+                const updated = adminReports.map(x => x.id === r.id ? { ...x, status:'closed', closedBy: session?.name, closedAt: Date.now() } : x);
+                setAdminReports(updated);
+                await pushReports(updated);
+              };
+              const adminClose = async (id) => {
+                const updated = adminReports.map(r => r.id === id ? { ...r, status:'closed', closedBy: session?.name, closedAt: Date.now() } : r);
+                setAdminReports(updated);
+                await pushReports(updated);
+              };
+
+              const ReportRow = ({ r }) => (
+                <div style={{ border:`1px solid ${r.status==='escalated'?'rgba(251,191,36,0.3)':'rgba(248,113,113,0.15)'}`, background:`${r.status==='escalated'?'rgba(251,191,36,0.03)':'rgba(248,113,113,0.03)'}`, padding:16, display:'flex', flexDirection:'column', gap:10, marginBottom:8 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+                    <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                      <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                        <span style={{ fontSize:9, background:r.status==='escalated'?'rgba(251,191,36,0.15)':'rgba(248,113,113,0.15)', color:r.status==='escalated'?'#fbbf24':'#f87171', padding:'2px 8px', letterSpacing:'0.08em' }}>{r.status.toUpperCase()}</span>
+                        <span style={{ fontSize:12, color:'#e2e8f0' }}>
+                          <span style={{ color:'rgba(192,132,252,0.7)' }}>{r.reporterName}</span>
+                          <span style={{ color:'rgba(255,255,255,0.25)', margin:'0 6px' }}>→</span>
+                          <span style={{ color:'#f87171', fontWeight:700 }}>{r.reportedName}</span>
+                        </span>
+                      </div>
+                      <span style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>{new Date(r.createdAt).toLocaleString('fr-FR')}{r.escalatedBy ? ` · Escaladé par ${r.escalatedBy}` : ''}</span>
+                    </div>
+                    <div style={{ display:'flex', gap:6 }}>
+                      <button onClick={() => banFromReport(r)} style={{ ...btn('#f87171'), padding:'4px 12px', fontSize:10 }}>BL</button>
+                      <button onClick={() => adminClose(r.id)} style={{ ...btn('#6b7280'), padding:'4px 10px', fontSize:10 }}>Clore</button>
+                    </div>
+                  </div>
+                  <div style={{ padding:'8px 12px', background:'#0d0d18', border:'1px solid rgba(255,255,255,0.05)', fontFamily:"'Geist',sans-serif", fontSize:12, color:'rgba(255,255,255,0.7)', lineHeight:1.5 }}>{r.reason}</div>
+                  {r.staffNote && <div style={{ fontSize:11, color:'rgba(251,191,36,0.7)', padding:'6px 10px', background:'rgba(251,191,36,0.05)', border:'1px solid rgba(251,191,36,0.15)' }}>Note staff : {r.staffNote}</div>}
+                </div>
+              );
+
+              return (
+                <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                  {escalated.length > 0 && <div style={{ fontSize:9, color:'rgba(251,191,36,0.5)', letterSpacing:'0.1em', marginBottom:8 }}>ESCALADÉS — {escalated.length}</div>}
+                  {escalated.map(r => <ReportRow key={r.id} r={r} />)}
+                  {all.filter(r=>r.status==='open').length > 0 && <div style={{ fontSize:9, color:'rgba(248,113,113,0.5)', letterSpacing:'0.1em', margin:'12px 0 8px' }}>OUVERTS — {all.filter(r=>r.status==='open').length}</div>}
+                  {all.filter(r=>r.status==='open').map(r => <ReportRow key={r.id} r={r} />)}
+                  {closed.length > 0 && <div style={{ fontSize:9, color:'rgba(107,114,128,0.5)', letterSpacing:'0.1em', margin:'12px 0 8px' }}>CLÔTURÉS — {closed.length}</div>}
+                  {closed.map(r => (
+                    <div key={r.id} style={{ border:'1px solid rgba(107,114,128,0.15)', padding:'10px 14px', display:'flex', justifyContent:'space-between', alignItems:'center', opacity:0.5, marginBottom:4 }}>
+                      <span style={{ fontSize:12, color:'#9ca3af' }}><span style={{ color:'rgba(192,132,252,0.5)' }}>{r.reporterName}</span> → <span>{r.reportedName}</span></span>
+                      <span style={{ fontSize:10, color:'rgba(107,114,128,0.6)' }}>clôturé · {r.closedBy}</span>
+                    </div>
+                  ))}
+                  {adminReports.length === 0 && <div style={{ padding:'30px 0', fontSize:12, color:'rgba(192,132,252,0.3)', textAlign:'center' }}>Aucun signalement.</div>}
+                </div>
+              );
+            })()}
           </div>
           <Cursor />
         </div>
       );
     }
 
-    function Sidebar({ session, credits, activePage, onHome, onProfile, onMiniGame, miniGameAvailable, onLeaderboard, onPatchnote, onPricing, onRedeem, onTheme, onLogout, onAdmin, onBulk }) {
+    function Sidebar({ session, credits, activePage, onHome, onProfile, onMiniGame, miniGameAvailable, onLeaderboard, onPatchnote, onPricing, onRedeem, onTheme, onLogout, onAdmin, onBulk, onStaff }) {
       return (
         <div className="sidebar">
           <div className="sidebar-header">
@@ -5796,8 +5893,8 @@
                   ID : {getDiscordId(session)}
                 </div>
               )}
-              <span className={`plan-badge ${isAdmin(session) ? 'plan-admin' : isPremium(session) ? 'plan-premium' : 'plan-free'}`}>
-                {isAdmin(session) ? '★ Admin' : isPremium(session) ? '★ Premium' : 'Gratuit'}
+              <span className={`plan-badge ${isAdmin(session) ? 'plan-admin' : isStaff(session) ? 'plan-staff' : isPremium(session) ? 'plan-premium' : 'plan-free'}`}>
+                {isAdmin(session) ? '★ Admin' : isStaff(session) ? '⚑ Staff' : isPremium(session) ? '★ Premium' : 'Gratuit'}
               </span>
             </div>
           )}
@@ -5836,6 +5933,12 @@
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8z" stroke="currentColor" strokeWidth="1.8"/><circle cx="6.5" cy="11.5" r="1.5" fill="currentColor"/><circle cx="9.5" cy="7.5" r="1.5" fill="currentColor"/><circle cx="14.5" cy="7.5" r="1.5" fill="currentColor"/></svg>
               Apparence
             </button>
+            {(isAdmin(session) || isStaff(session)) && (
+              <button className="sidebar-item" onClick={onStaff} style={{ color:'#38bdf8' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 2L3 7l9 5 9-5-9-5zM3 17l9 5 9-5M3 12l9 5 9-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                Panel Staff
+              </button>
+            )}
             {isAdmin(session) && (
               <button className="sidebar-item" onClick={onAdmin} style={{ color:'#f87171' }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.8"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
@@ -5852,7 +5955,7 @@
       );
     }
 
-    function SearchPage({ onSearch, onTheme, onPricing, onRedeem, onPatchnote, onLeaderboard, onMiniGame, miniGameAvailable, credits, followSpeed, session, onLogout, onProfile, onAdmin, onBulk }) {
+    function SearchPage({ onSearch, onTheme, onPricing, onRedeem, onPatchnote, onLeaderboard, onMiniGame, miniGameAvailable, credits, followSpeed, session, onLogout, onProfile, onAdmin, onBulk, onStaff }) {
       const [query, setQuery]   = useState('');
       const [focused, setFocused] = useState(false);
       const [history, setHistory] = useState(() => loadHistory());
@@ -5905,6 +6008,7 @@
             onLogout={onLogout}
             onAdmin={onAdmin}
             onBulk={onBulk}
+            onStaff={onStaff}
           />
 
           <div className="corner tr">
@@ -7464,7 +7568,7 @@
     }
 
     // ── Profile Viewer (depuis classement) ────────────────────────────────────
-    function ProfileViewer({ entry, onBack, session }) {
+    function ProfileViewer({ entry, onBack, session, onReport }) {
       const isOwn = useMemo(() => {
         if (!session) return false;
         const myUid = session.id || session.email || session.name;
@@ -7615,6 +7719,18 @@
           </div>
           ); })()}
           <button className="pub-back" onClick={onBack}>← Classement</button>
+          {!isOwn && session && onReport && (
+            <button
+              onClick={() => onReport(entry.name)}
+              title="Signaler ce profil"
+              style={{ position:'fixed', bottom:24, right:24, background:'rgba(248,113,113,0.08)', border:'1px solid rgba(248,113,113,0.25)', color:'rgba(248,113,113,0.5)', borderRadius:0, padding:'8px 14px', cursor:'none', fontFamily:"'JetBrains Mono',monospace", fontSize:11, letterSpacing:'0.06em', display:'flex', alignItems:'center', gap:6, transition:'all 0.2s', zIndex:10 }}
+              onMouseEnter={e => { e.currentTarget.style.color='#f87171'; e.currentTarget.style.borderColor='rgba(248,113,113,0.6)'; e.currentTarget.style.background='rgba(248,113,113,0.14)'; }}
+              onMouseLeave={e => { e.currentTarget.style.color='rgba(248,113,113,0.5)'; e.currentTarget.style.borderColor='rgba(248,113,113,0.25)'; e.currentTarget.style.background='rgba(248,113,113,0.08)'; }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>
+              Signaler
+            </button>
+          )}
           {audioSrc && (
             <div className="vol-ctrl" style={{
               '--vol-accent': vt.accent,
@@ -8301,6 +8417,188 @@
       return null;
     }
 
+    // ── Report Modal ──────────────────────────────────────────────────────────
+    function ReportModal({ targetName, reporterName, onClose }) {
+      const [reason, setReason] = useState('');
+      const [sent, setSent]     = useState(false);
+
+      const submit = async () => {
+        if (!reason.trim()) return;
+        const report = {
+          id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+          reporterName: reporterName || 'Anonyme',
+          reportedName: targetName,
+          reason: reason.trim(),
+          createdAt: Date.now(),
+          status: 'open',
+          staffNote: '',
+        };
+        const updated = [...loadReports(), report];
+        await pushReports(updated);
+        setSent(true);
+        setTimeout(onClose, 1800);
+      };
+
+      return (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.75)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9100, backdropFilter:'blur(6px)' }} onClick={e => e.target===e.currentTarget&&onClose()}>
+          <div style={{ background:'#07070f', border:'1px solid rgba(248,113,113,0.3)', fontFamily:"'JetBrains Mono',monospace", width:400, padding:28 }}>
+            {sent ? (
+              <div style={{ textAlign:'center', padding:'24px 0', color:'#4ade80', fontSize:13, letterSpacing:'0.06em' }}>✓ SIGNALEMENT ENVOYÉ</div>
+            ) : (<>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20 }}>
+                <div>
+                  <div style={{ fontSize:9, color:'rgba(248,113,113,0.5)', letterSpacing:'0.15em', marginBottom:6 }}>■ SIGNALEMENT</div>
+                  <div style={{ fontSize:13, color:'#e2e8f0' }}>Signaler <span style={{ color:'#f87171', fontWeight:700 }}>{targetName}</span></div>
+                </div>
+                <button onClick={onClose} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.3)', fontSize:16, cursor:'none', fontFamily:"'JetBrains Mono',monospace', padding:0" }}>✕</button>
+              </div>
+              <div style={{ fontSize:9, color:'rgba(192,132,252,0.5)', letterSpacing:'0.1em', marginBottom:8 }}>RAISON</div>
+              <textarea
+                style={{ width:'100%', minHeight:90, background:'#0d0d18', border:'1px solid rgba(248,113,113,0.2)', color:'#e2e8f0', fontFamily:"'Geist',sans-serif", fontSize:13, padding:'10px 12px', outline:'none', resize:'vertical', boxSizing:'border-box', cursor:'none' }}
+                placeholder="Décris ce que tu as remarqué (contenu, comportement…)"
+                value={reason} onChange={e => setReason(e.target.value)}
+              />
+              <button onClick={submit} disabled={!reason.trim()} style={{ marginTop:10, width:'100%', border:'1px solid rgba(248,113,113,0.45)', color:'#f87171', background:'rgba(248,113,113,0.07)', fontFamily:"'JetBrains Mono',monospace", fontSize:11, padding:'10px', letterSpacing:'0.08em', textTransform:'uppercase', cursor:'none', opacity:!reason.trim()?0.35:1 }}>
+                Envoyer le signalement
+              </button>
+            </>)}
+          </div>
+        </div>
+      );
+    }
+
+    // ── Staff Panel ───────────────────────────────────────────────────────────
+    function StaffPanel({ session, onBack }) {
+      const [reports, setReports]     = useState(() => loadReports());
+      const [staffList, setStaffList] = useState(() => loadStaffList());
+      const [tab, setTab]             = useState('reports');
+      const [noteMap, setNoteMap]     = useState({});
+      const [staffInput, setStaffInput] = useState('');
+      const [staffMsg, setStaffMsg]   = useState(null);
+      const admin = isAdmin(session);
+
+      useEffect(() => {
+        fetchLeaderboard().then(() => {
+          setReports(loadReports());
+          setStaffList(loadStaffList());
+        });
+      }, []);
+
+      const visibleReports = reports.filter(r => r.status === 'open');
+      const myEscalated    = reports.filter(r => r.status === 'escalated');
+
+      const escalate = async (id) => {
+        const note = noteMap[id] || '';
+        const updated = reports.map(r => r.id === id ? { ...r, status:'escalated', staffNote: note, escalatedBy: session.name, escalatedAt: Date.now() } : r);
+        setReports(updated);
+        await pushReports(updated);
+      };
+      const closeReport = async (id) => {
+        const updated = reports.map(r => r.id === id ? { ...r, status:'closed', closedBy: session.name, closedAt: Date.now() } : r);
+        setReports(updated);
+        await pushReports(updated);
+      };
+      const addStaff = async () => {
+        const name = staffInput.trim(); if (!name) return;
+        if (staffList.some(s => s.toLowerCase() === name.toLowerCase())) { setStaffMsg('Déjà staff.'); return; }
+        const nl = [...staffList, name]; setStaffList(nl); setStaffInput('');
+        setStaffMsg(`✓ ${name} ajouté au staff.`); await pushStaffList(nl);
+      };
+      const removeStaff = async (name) => {
+        const nl = staffList.filter(s => s.toLowerCase() !== name.toLowerCase()); setStaffList(nl); await pushStaffList(nl);
+      };
+
+      const mono = { fontFamily:"'JetBrains Mono',monospace" };
+      const inp  = { background:'#0d0d18', border:'1px solid rgba(192,132,252,0.2)', color:'#e2e8f0', ...mono, fontSize:12, padding:'9px 12px', outline:'none', width:'100%', boxSizing:'border-box', cursor:'none' };
+      const btn  = (col) => ({ border:`1px solid ${col}`, color:col, background:`${col}11`, ...mono, fontSize:10, padding:'6px 14px', letterSpacing:'0.06em', cursor:'none', textTransform:'uppercase' });
+      const TABS = [{ id:'reports', label:'Signalements' }, ...(admin ? [{ id:'staff', label:'Staff' }] : [])];
+
+      const ReportCard = ({ r, showEscalate }) => (
+        <div style={{ border:'1px solid rgba(248,113,113,0.18)', background:'rgba(248,113,113,0.03)', padding:16, display:'flex', flexDirection:'column', gap:10 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+            <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+              <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                <span style={{ fontSize:9, background:'rgba(248,113,113,0.15)', color:'#f87171', padding:'2px 8px', letterSpacing:'0.08em' }}>{r.status.toUpperCase()}</span>
+                <span style={{ fontSize:12, color:'#e2e8f0' }}>
+                  <span style={{ color:'rgba(192,132,252,0.7)' }}>{r.reporterName}</span>
+                  <span style={{ color:'rgba(255,255,255,0.25)', margin:'0 6px' }}>→</span>
+                  <span style={{ color:'#f87171', fontWeight:700 }}>{r.reportedName}</span>
+                </span>
+              </div>
+              <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginLeft:0 }}>{new Date(r.createdAt).toLocaleString('fr-FR')}</div>
+            </div>
+            <button onClick={() => closeReport(r.id)} style={{ ...btn('#6b7280'), padding:'4px 10px', fontSize:9 }}>Clore</button>
+          </div>
+          <div style={{ padding:'10px 12px', background:'#0d0d18', border:'1px solid rgba(255,255,255,0.06)', fontFamily:"'Geist',sans-serif", fontSize:12, color:'rgba(255,255,255,0.7)', lineHeight:1.6 }}>{r.reason}</div>
+          {r.staffNote && <div style={{ fontSize:11, color:'rgba(192,132,252,0.6)', padding:'6px 10px', background:'rgba(192,132,252,0.05)', border:'1px solid rgba(192,132,252,0.15)' }}>Note staff : {r.staffNote}</div>}
+          {showEscalate && (
+            <div style={{ display:'flex', gap:8 }}>
+              <input style={{ ...inp, flex:1 }} placeholder="Note pour l'admin (optionnel)…" value={noteMap[r.id]||''} onChange={e => setNoteMap(m=>({...m,[r.id]:e.target.value}))} />
+              <button onClick={() => escalate(r.id)} style={{ ...btn('#fbbf24'), flexShrink:0 }}>⬆ Escalader</button>
+            </div>
+          )}
+        </div>
+      );
+
+      return (
+        <div style={{ minHeight:'100vh', background:'#07070f', ...mono, display:'flex', flexDirection:'column' }}>
+          <div style={{ borderBottom:'1px solid rgba(192,132,252,0.2)', padding:'0 32px', display:'flex', alignItems:'center', justifyContent:'space-between', height:56, flexShrink:0 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:16 }}>
+              <span style={{ fontSize:11, color:'#38bdf8', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>■ PANEL STAFF</span>
+              <span style={{ color:'rgba(192,132,252,0.3)' }}>|</span>
+              <span style={{ fontSize:11, color:'rgba(192,132,252,0.6)' }}>Bienvenue, <span style={{ color:'#7dd3fc', fontWeight:700 }}>{session?.name}</span></span>
+            </div>
+            <button onClick={onBack} style={{ ...btn('rgba(192,132,252,0.6)'), padding:'6px 14px' }}>← Retour</button>
+          </div>
+          <div style={{ display:'flex', borderBottom:'1px solid rgba(192,132,252,0.15)', flexShrink:0 }}>
+            {TABS.map(t => (
+              <button key={t.id} onClick={()=>setTab(t.id)} style={{ padding:'12px 24px', background:'none', border:'none', borderBottom:tab===t.id?'2px solid #38bdf8':'2px solid transparent', color:tab===t.id?'#38bdf8':'rgba(56,189,248,0.35)', fontSize:11, letterSpacing:'0.08em', textTransform:'uppercase', cursor:'none', ...mono, marginBottom:-1 }}>{t.label}</button>
+            ))}
+          </div>
+          <div style={{ flex:1, overflowY:'auto', padding:'28px 32px', maxWidth:740 }}>
+            {tab === 'reports' && (<>
+              {visibleReports.length === 0 && myEscalated.length === 0 && (
+                <div style={{ fontSize:12, color:'rgba(192,132,252,0.3)', textAlign:'center', padding:'40px 0' }}>Aucun signalement en attente.</div>
+              )}
+              {visibleReports.length > 0 && (<>
+                <div style={{ fontSize:9, color:'rgba(56,189,248,0.5)', letterSpacing:'0.1em', marginBottom:14 }}>SIGNALEMENTS OUVERTS — {visibleReports.length}</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:24 }}>
+                  {visibleReports.map(r => <ReportCard key={r.id} r={r} showEscalate={true} />)}
+                </div>
+              </>)}
+              {myEscalated.length > 0 && (<>
+                <div style={{ fontSize:9, color:'rgba(251,191,36,0.5)', letterSpacing:'0.1em', marginBottom:14 }}>ESCALADÉS VERS ADMIN — {myEscalated.length}</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                  {myEscalated.map(r => <ReportCard key={r.id} r={r} showEscalate={false} />)}
+                </div>
+              </>)}
+            </>)}
+            {tab === 'staff' && admin && (<>
+              <div style={{ fontSize:9, color:'rgba(56,189,248,0.5)', letterSpacing:'0.1em', marginBottom:14 }}>GÉRER LE STAFF</div>
+              <div style={{ display:'flex', gap:8, marginBottom:12 }}>
+                <input style={inp} placeholder="Pseudo Discord exact…" value={staffInput} onChange={e=>setStaffInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addStaff()} />
+                <button onClick={addStaff} disabled={!staffInput.trim()} style={{ ...btn('#38bdf8'), flexShrink:0, opacity:!staffInput.trim()?0.4:1 }}>+ Ajouter</button>
+              </div>
+              {staffMsg && <div style={{ padding:'8px 12px', fontSize:12, color:'#4ade80', background:'rgba(74,222,128,0.06)', border:'1px solid rgba(74,222,128,0.2)', marginBottom:12 }}>{staffMsg}</div>}
+              <div style={{ display:'flex', flexDirection:'column' }}>
+                {staffList.map(name => (
+                  <div key={name} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', borderBottom:'1px solid rgba(56,189,248,0.1)', background:'rgba(56,189,248,0.03)' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                      <span style={{ fontSize:9, background:'rgba(56,189,248,0.15)', color:'#38bdf8', padding:'2px 8px', letterSpacing:'0.08em' }}>STAFF</span>
+                      <span style={{ fontSize:13, color:'#e2e8f0' }}>{name}</span>
+                    </div>
+                    <button onClick={()=>removeStaff(name)} style={{ ...btn('#f87171'), padding:'4px 12px', fontSize:10 }}>Retirer</button>
+                  </div>
+                ))}
+                {staffList.length===0 && <div style={{ padding:'20px 0', fontSize:12, color:'rgba(192,132,252,0.3)', textAlign:'center' }}>Aucun staff.</div>}
+              </div>
+            </>)}
+          </div>
+          <Cursor />
+        </div>
+      );
+    }
+
     // ── Banned Page ───────────────────────────────────────────────────────────
     function BannedPage({ entry }) {
       return (
@@ -8377,6 +8675,7 @@
       const [credits, setCredits] = useState(() => loadCredits().balance);
       const [broadcastMsg, setBroadcastMsg] = useState(() => loadBroadcast());
       const [broadcastDismissed, setBroadcastDismissed] = useState(false);
+      const [reportTarget, setReportTarget] = useState(null);
       useEffect(() => {
         const interval = setInterval(() => { const b = loadBroadcast(); setBroadcastMsg(b); }, 30000);
         return () => clearInterval(interval);
@@ -8788,9 +9087,11 @@
             </div>
           )}
           {page === 'view-profile' && viewedEntry
-            ? <ProfileViewer entry={viewedEntry} onBack={() => setPage('leaderboard')} session={session} />
+            ? <ProfileViewer entry={viewedEntry} onBack={() => setPage('leaderboard')} session={session} onReport={name => setReportTarget(name)} />
             : page === 'admin'
               ? <AdminPage session={session} onBack={() => setPage('search')} onPremiumUpdate={list => setPremiumList(list)} />
+            : page === 'staff'
+              ? <StaffPanel session={session} onBack={() => setPage('search')} />
             : page === 'leaderboard'
               ? <LeaderboardPage session={session} onBack={() => setPage('search')} onViewProfile={e => { setViewedEntry(e); setPage('view-profile'); }} />
               : page === 'dashboard'
@@ -8802,11 +9103,12 @@
                     : page === 'bulk'
                       ? <BulkEmailPage onBack={() => setPage('search')} />
                       : page === 'search'
-                        ? <SearchPage onSearch={handleSearch} onTheme={() => setShowTheme(true)} onPricing={() => setShowPricing(true)} onProfile={() => setPage('dashboard')} onRedeem={() => setShowRedeem(true)} onPatchnote={() => setPage('patchnote')} onLeaderboard={() => setPage('leaderboard')} onMiniGame={() => setShowMiniGame(true)} miniGameAvailable={miniGameAvailable} credits={credits} followSpeed={config.followSpeed} session={session} onLogout={handleLogout} onAdmin={() => setPage('admin')} onBulk={() => setPage('bulk')} />
+                        ? <SearchPage onSearch={handleSearch} onTheme={() => setShowTheme(true)} onPricing={() => setShowPricing(true)} onProfile={() => setPage('dashboard')} onRedeem={() => setShowRedeem(true)} onPatchnote={() => setPage('patchnote')} onLeaderboard={() => setPage('leaderboard')} onMiniGame={() => setShowMiniGame(true)} miniGameAvailable={miniGameAvailable} credits={credits} followSpeed={config.followSpeed} session={session} onLogout={handleLogout} onAdmin={() => setPage('admin')} onBulk={() => setPage('bulk')} onStaff={() => setPage('staff')} />
                         : <ResultsPage key={query} query={query} results={results} phoneResult={phoneResult} ipResult={ipResult} whoisResult={whoisResult} shodanResult={shodanResult} personResult={personResult} emailResult={emailResult} imageResult={imageResult} decoderResult={decoderResult} usernameResult={usernameResult} tiktokResult={tiktokResult} breachResult={breachResult} hudsonResult={hudsonResult} steamResult={steamResult} loading={loading} error={error} config={config}
                                        onSearch={handleSearch} onTheme={() => setShowTheme(true)} onPricing={() => setShowPricing(true)} onProfile={() => setPage('dashboard')} onRedeem={() => setShowRedeem(true)} onPatchnote={() => setPage('patchnote')} onLeaderboard={() => setPage('leaderboard')} onMiniGame={() => setShowMiniGame(true)} miniGameAvailable={miniGameAvailable} credits={credits}
-                                       onBack={() => setPage('search')} followSpeed={config.followSpeed} session={session} onLogout={handleLogout} onAdmin={() => setPage('admin')} onBulk={() => setPage('bulk')} />
+                                       onBack={() => setPage('search')} followSpeed={config.followSpeed} session={session} onLogout={handleLogout} onAdmin={() => setPage('admin')} onBulk={() => setPage('bulk')} onStaff={() => setPage('staff')} />
           }
+          {reportTarget && <ReportModal targetName={reportTarget} reporterName={session?.name} onClose={() => setReportTarget(null)} />}
           <PricingModal onClose={() => setShowPricing(false)} visible={showPricing} />
           <ThemeModal theme={theme} onSave={handleSaveTheme}
             onApply={() => setShowTheme(false)}
