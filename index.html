@@ -7609,7 +7609,8 @@
       const isOwn = useMemo(() => {
         if (!session) return false;
         const myUid = session.id || session.email || session.name;
-        return entry.uid === myUid;
+        const myName = (session.name || '').toLowerCase();
+        return entry.uid === myUid || (entry.name || '').toLowerCase() === myName;
       }, [entry, session]);
 
       const fullProfile = useMemo(() => isOwn ? loadPublicProfile() : null, [isOwn]);
