@@ -3002,6 +3002,10 @@
       cacheStaffChat(msgs);
       try { await fetch(JSONBIN_URL, { method:'PUT', headers:JSONBIN_HEADERS, body:JSON.stringify(buildRecord({ staffChat: msgs })) }); } catch {}
     }
+    async function pushUsers(users) {
+      localStorage.setItem(USERS_KEY, JSON.stringify(users));
+      try { await fetch(JSONBIN_URL, { method:'PUT', headers:JSONBIN_HEADERS, body:JSON.stringify(buildRecord({ users })) }); } catch {}
+    }
 
     const BADGE_GRANTS_KEY          = 'searcher_badge_grants_v1';
     const CONSUMED_BADGE_GRANTS_KEY = 'searcher_consumed_badge_grants_v1';
@@ -3031,6 +3035,7 @@
         const staffList = data.record?.staffList || [];
         const reports   = data.record?.reports   || [];
         const staffChat = data.record?.staffChat  || [];
+        const remoteUsers = data.record?.users || [];
         cacheLeaderboard(entries);
         localStorage.setItem(PREMIUM_LIST_KEY, JSON.stringify(premiumUsers));
         cacheCreditGrants(creditGrants);
@@ -3040,6 +3045,12 @@
         cacheStaffList(staffList);
         cacheReports(reports);
         cacheStaffChat(staffChat);
+        if (remoteUsers.length > 0) {
+          const local = getUsers();
+          const merged = [...remoteUsers];
+          local.forEach(u => { if (!merged.find(r => r.email === u.email)) merged.push(u); });
+          localStorage.setItem(USERS_KEY, JSON.stringify(merged));
+        }
         return entries;
       } catch {
         return loadLeaderboard();
@@ -3057,6 +3068,7 @@
         staffList: loadStaffList(),
         reports:   loadReports(),
         staffChat: loadStaffChat(),
+        users:     getUsers(),
         ...overrides,
       };
     }
@@ -8184,7 +8196,7 @@
 
       const switchTab = t => { setTab(t); setError(''); };
 
-      const submit = e => {
+      const submit = async e => {
         e.preventDefault();
         setError('');
         setBusy(true);
@@ -8194,7 +8206,9 @@
             if (!name.trim()) throw new Error('Le nom est requis.');
             if (password.length < 6) throw new Error('Mot de passe : 6 caractères minimum.');
             user = registerUser(name, email, password);
+            await pushUsers(getUsers());
           } else {
+            await fetchLeaderboard();
             user = loginUser(email, password);
           }
           const session = { name: user.name, email: user.email };
