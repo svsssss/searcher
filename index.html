@@ -2953,7 +2953,11 @@
     function loadBlacklist() {
       try {
         const raw = JSON.parse(localStorage.getItem(BLACKLIST_KEY)) || [];
-        return raw.map(e => typeof e === 'string' ? { name: e, reason: '' } : e);
+        const now = Date.now();
+        const normalized = raw.map(e => typeof e === 'string' ? { name: e, reason: '', expiresAt: null } : e);
+        const active = normalized.filter(e => !e.expiresAt || e.expiresAt > now);
+        if (active.length !== normalized.length) localStorage.setItem(BLACKLIST_KEY, JSON.stringify(active));
+        return active;
       } catch { return []; }
     }
     function isBlacklisted(session) {
@@ -2962,6 +2966,10 @@
       const id = session.id || '';
       const list = loadBlacklist();
       return list.find(e => e.name.toLowerCase() === name || (id && e.id === id)) || null;
+    }
+    function fmtExpiry(expiresAt) {
+      if (!expiresAt) return 'Permanent';
+      return new Date(expiresAt).toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
     }
     function cacheBlacklist(l){ localStorage.setItem(BLACKLIST_KEY, JSON.stringify(l)); }
     function loadBroadcast()  { try { return JSON.parse(localStorage.getItem(BROADCAST_KEY)) || null; } catch { return null; } }
@@ -5480,6 +5488,7 @@
       const [bdMsg, setBdMsg]       = useState(null);
       const [blName, setBlName]     = useState('');
       const [blReason, setBlReason] = useState('');
+      const [blDuration, setBlDuration] = useState(null);
       const [blList, setBlList]     = useState(() => loadBlacklist());
       const [blMsg, setBlMsg]       = useState(null);
       const [bcText, setBcText]     = useState('');
@@ -5518,11 +5527,20 @@
         const nl = staffList.filter(s => s.toLowerCase() !== name.toLowerCase()); setStaffList(nl); await pushStaffList(nl);
       };
 
+      const BL_DURATIONS = [
+        { label: 'Permanent', value: null },
+        { label: '1 jour',    value: 86400000 },
+        { label: '7 jours',   value: 604800000 },
+        { label: '30 jours',  value: 2592000000 },
+      ];
       const addBlacklist = () => {
         const name = blName.trim(); if (!name) return;
         if (blList.some(u => u.name.toLowerCase() === name.toLowerCase())) { setBlMsg({ ok:false, text:`${name} est déjà blacklisté.` }); return; }
-        const newList = [...blList, { name, reason: blReason.trim() }]; setBlList(newList); setBlName(''); setBlReason('');
-        setBlMsg({ ok:true, text:`✓ ${name} blacklisté.` }); pushBlacklist(newList);
+        const expiresAt = blDuration ? Date.now() + blDuration : null;
+        const newList = [...blList, { name, reason: blReason.trim(), expiresAt }];
+        setBlList(newList); setBlName(''); setBlReason('');
+        const durLabel = BL_DURATIONS.find(d => d.value === blDuration)?.label || 'Permanent';
+        setBlMsg({ ok:true, text:`✓ ${name} blacklisté — ${durLabel}.` }); pushBlacklist(newList);
       };
       const removeBlacklist = async name => {
         const nl = blList.filter(u => u.name.toLowerCase() !== name.toLowerCase());
@@ -5909,24 +5927,35 @@
               <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
                 <div style={{ fontSize:10, color:'rgba(192,132,252,0.5)', letterSpacing:'0.1em', marginBottom:4 }}>BLACKLISTER UN UTILISATEUR</div>
                 <input style={inp} placeholder="Pseudo Discord exact…" value={blName} onChange={e=>setBlName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addBlacklist()} />
-                <div style={{ display:'flex', gap:8 }}>
-                  <input style={{ ...inp, flex:1 }} placeholder="Raison (optionnelle)…" value={blReason} onChange={e=>setBlReason(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addBlacklist()} />
-                  <button onClick={addBlacklist} disabled={!blName.trim()} style={{ ...btn('#f87171'), flexShrink:0, opacity:!blName.trim()?0.4:1 }}>Blacklist</button>
-                </div>
-                {blMsg && <div style={{ padding:'8px 12px', fontSize:12, background:'rgba(248,113,113,0.08)', color:'#f87171', border:'1px solid rgba(248,113,113,0.2)' }}>{blMsg.text}</div>}
-                <div style={{ display:'flex', flexDirection:'column' }}>
-                  {blList.map(entry => (
-                    <div key={entry.name} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', borderBottom:'1px solid rgba(248,113,113,0.1)', background:'rgba(248,113,113,0.03)' }}>
-                      <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
-                        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                          <span style={{ fontSize:9, background:'rgba(248,113,113,0.15)', color:'#f87171', padding:'2px 8px', letterSpacing:'0.08em' }}>BLOQUÉ</span>
-                          <span style={{ fontSize:13, color:'#e2e8f0' }}>{entry.name}</span>
-                        </div>
-                        {entry.reason && <span style={{ fontSize:11, color:'rgba(252,165,165,0.5)', fontFamily:"'Geist',sans-serif", marginLeft:0 }}>{entry.reason}</span>}
-                      </div>
-                      <button onClick={()=>removeBlacklist(entry.name)} style={{ ...btn('#4ade80'), padding:'4px 12px', fontSize:10 }}>Débloquer</button>
-                    </div>
+                <input style={inp} placeholder="Raison (optionnelle)…" value={blReason} onChange={e=>setBlReason(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addBlacklist()} />
+                <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+                  <span style={{ fontSize:9, color:'rgba(192,132,252,0.45)', letterSpacing:'0.08em' }}>DURÉE :</span>
+                  {BL_DURATIONS.map(d => (
+                    <button key={String(d.value)} onClick={() => setBlDuration(d.value)} style={{ border:`1px solid ${blDuration===d.value ? '#f87171' : 'rgba(248,113,113,0.2)'}`, color: blDuration===d.value ? '#f87171' : 'rgba(248,113,113,0.4)', background: blDuration===d.value ? 'rgba(248,113,113,0.1)' : 'transparent', fontSize:10, padding:'4px 12px', cursor:'none', fontFamily:"'JetBrains Mono',monospace", letterSpacing:'0.04em' }}>{d.label}</button>
                   ))}
+                  <button onClick={addBlacklist} disabled={!blName.trim()} style={{ ...btn('#f87171'), marginLeft:'auto', opacity:!blName.trim()?0.4:1 }}>Blacklist</button>
+                </div>
+                {blMsg && <div style={{ padding:'8px 12px', fontSize:12, background:'rgba(248,113,113,0.08)', color:blMsg.ok?'#f87171':'#fca5a5', border:'1px solid rgba(248,113,113,0.2)' }}>{blMsg.text}</div>}
+                <div style={{ display:'flex', flexDirection:'column' }}>
+                  {blList.map(entry => {
+                    const expired = entry.expiresAt && entry.expiresAt < Date.now();
+                    const soonExp = entry.expiresAt && !expired && entry.expiresAt - Date.now() < 86400000;
+                    return (
+                      <div key={entry.name} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', borderBottom:'1px solid rgba(248,113,113,0.1)', background:'rgba(248,113,113,0.03)' }}>
+                        <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                            <span style={{ fontSize:9, background:'rgba(248,113,113,0.15)', color:'#f87171', padding:'2px 8px', letterSpacing:'0.08em' }}>BLOQUÉ</span>
+                            <span style={{ fontSize:13, color:'#e2e8f0' }}>{entry.name}</span>
+                          </div>
+                          {entry.reason && <span style={{ fontSize:11, color:'rgba(252,165,165,0.5)', fontFamily:"'Geist',sans-serif" }}>{entry.reason}</span>}
+                          <span style={{ fontSize:10, color: soonExp ? '#fbbf24' : 'rgba(192,132,252,0.35)', fontFamily:"'JetBrains Mono',monospace" }}>
+                            {entry.expiresAt ? `⏱ Levée le ${fmtExpiry(entry.expiresAt)}` : '∞ Permanent'}
+                          </span>
+                        </div>
+                        <button onClick={()=>removeBlacklist(entry.name)} style={{ ...btn('#4ade80'), padding:'4px 12px', fontSize:10 }}>Débloquer</button>
+                      </div>
+                    );
+                  })}
                   {blList.length===0 && <div style={{ padding:'20px 0', fontSize:12, color:'rgba(192,132,252,0.3)', textAlign:'center' }}>Aucun utilisateur blacklisté.</div>}
                 </div>
               </div>
@@ -7886,6 +7915,14 @@
                 <div style={{ fontSize:13, color:'#fca5a5', fontFamily:"'Geist',sans-serif", lineHeight:1.5 }}>{blEntry.reason}</div>
               </div>
             )}
+            {blEntry.expiresAt ? (
+              <div style={{ padding:'10px 20px', border:'1px solid rgba(251,191,36,0.2)', background:'rgba(251,191,36,0.04)', maxWidth:380, textAlign:'center' }}>
+                <div style={{ fontSize:9, color:'rgba(251,191,36,0.4)', letterSpacing:'0.1em', marginBottom:4, fontFamily:"'JetBrains Mono',monospace" }}>LEVÉE AUTOMATIQUE</div>
+                <div style={{ fontSize:13, color:'#fbbf24', fontFamily:"'JetBrains Mono',monospace" }}>{fmtExpiry(blEntry.expiresAt)}</div>
+              </div>
+            ) : (
+              <div style={{ fontSize:10, color:'rgba(248,113,113,0.3)', fontFamily:"'JetBrains Mono',monospace", letterSpacing:'0.08em' }}>∞ SUSPENSION PERMANENTE</div>
+            )}
             <Cursor />
           </div>
         );
@@ -8906,6 +8943,12 @@
               </div>
             )}
             <div style={{ width:280, height:1, background:'rgba(248,113,113,0.15)', margin:'4px 0' }} />
+            {entry?.expiresAt ? (
+              <div style={{ padding:'10px 20px', border:'1px solid rgba(251,191,36,0.25)', background:'rgba(251,191,36,0.05)', fontFamily:"'JetBrains Mono',monospace" }}>
+                <div style={{ fontSize:9, color:'rgba(251,191,36,0.45)', letterSpacing:'0.1em', marginBottom:4 }}>LEVÉE AUTOMATIQUE</div>
+                <div style={{ fontSize:13, color:'#fbbf24' }}>{fmtExpiry(entry.expiresAt)}</div>
+              </div>
+            ) : null}
             <div style={{ fontSize:12, color:'rgba(192,132,252,0.6)' }}>Pour envisager un déban, rejoignez le serveur Discord :</div>
             <a href={DISCORD_SERVER} target="_blank" rel="noopener noreferrer" style={{ color:'#c084fc', fontSize:12, letterSpacing:'0.06em', border:'1px solid rgba(192,132,252,0.35)', padding:'9px 20px', textDecoration:'none', background:'rgba(0,0,0,0.5)', display:'inline-flex', alignItems:'center', gap:8, cursor:'none', backdropFilter:'blur(8px)' }}>
               <svg width="18" height="14" viewBox="0 0 71 55" fill="none"><path d="M60.1 4.9A58.5 58.5 0 0 0 45.7.7a.2.2 0 0 0-.2.1 40.8 40.8 0 0 0-1.8 3.7 54 54 0 0 0-16.2 0 37.5 37.5 0 0 0-1.8-3.7.2.2 0 0 0-.2-.1A58.3 58.3 0 0 0 11.1 4.9a.2.2 0 0 0-.1.1C1.5 19.1-1 32.9.3 46.5a.2.2 0 0 0 .1.1 58.8 58.8 0 0 0 17.7 8.9.2.2 0 0 0 .2-.1 42 42 0 0 0 3.6-5.9.2.2 0 0 0-.1-.3 38.7 38.7 0 0 1-5.5-2.6.2.2 0 0 1 0-.4c.4-.3.7-.6 1.1-.9a.2.2 0 0 1 .2 0c11.5 5.3 24 5.3 35.4 0a.2.2 0 0 1 .2 0c.4.3.7.6 1.1.9a.2.2 0 0 1 0 .4 36.4 36.4 0 0 1-5.5 2.6.2.2 0 0 0-.1.3c1 2 2.2 4 3.6 5.9a.2.2 0 0 0 .2.1 58.7 58.7 0 0 0 17.8-8.9.2.2 0 0 0 .1-.1C73.2 30.7 69.7 17 60.2 5a.2.2 0 0 0-.1-.1ZM23.7 38.1c-3.5 0-6.4-3.2-6.4-7.2s2.8-7.2 6.4-7.2c3.6 0 6.5 3.3 6.4 7.2 0 4-2.9 7.2-6.4 7.2Zm23.7 0c-3.5 0-6.4-3.2-6.4-7.2s2.8-7.2 6.4-7.2c3.6 0 6.5 3.3 6.4 7.2 0 4-2.8 7.2-6.4 7.2Z" fill="#c084fc"/></svg>
