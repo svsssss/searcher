@@ -9387,17 +9387,18 @@
         <>
           {/* Announcement banner */}
           {showAnnouncement && (
-            <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:9999, background:'linear-gradient(90deg,#1a0a2e,#0f0a1e)', borderBottom:'1px solid rgba(239,68,68,0.35)', padding:'10px 20px', display:'flex', alignItems:'center', gap:12, fontFamily:"'Geist',sans-serif" }}>
-              <span style={{ fontSize:15 }}>⚠️</span>
-              <div style={{ flex:1, fontSize:13, color:'#fca5a5' }}>
-                <strong style={{ color:'#f87171' }}>BreachVIP est temporairement désactivé</strong>
-                <span style={{ color:'rgba(252,165,165,0.7)', marginLeft:8 }}>— L'API est hors ligne, les résultats BreachVIP ne sont pas disponibles pour le moment.</span>
+            <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:9999, background:'linear-gradient(90deg,#080f1a,#0d0a1f,#080f1a)', borderBottom:'1px solid rgba(192,132,252,0.25)', padding:'9px 20px', display:'flex', alignItems:'center', gap:12, fontFamily:"'JetBrains Mono',monospace" }}>
+              <span style={{ fontSize:13, color:'#4ade80', letterSpacing:'0.1em', flexShrink:0 }}>■</span>
+              <div style={{ flex:1, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+                <strong style={{ color:'#4ade80', fontSize:12, letterSpacing:'0.06em' }}>BREACHVIP EST DE RETOUR</strong>
+                <span style={{ color:'rgba(192,132,252,0.45)', fontSize:11 }}>|</span>
+                <span style={{ color:'rgba(192,132,252,0.7)', fontSize:11, letterSpacing:'0.03em', fontStyle:'italic' }}>les données ne dorment jamais — et nous non plus.</span>
               </div>
               <button
                 onClick={() => { setShowAnnouncement(false); sessionStorage.setItem('ann_dismissed','1'); }}
-                style={{ background:'rgba(239,68,68,0.12)', border:'1px solid rgba(239,68,68,0.3)', color:'#f87171', padding:'4px 14px', borderRadius:4, cursor:'pointer', fontSize:12, fontFamily:"'JetBrains Mono',monospace", letterSpacing:'0.04em', flexShrink:0 }}
+                style={{ background:'transparent', border:'1px solid rgba(192,132,252,0.25)', color:'rgba(192,132,252,0.5)', padding:'3px 12px', cursor:'pointer', fontSize:10, fontFamily:"'JetBrains Mono',monospace", letterSpacing:'0.06em', flexShrink:0 }}
               >
-                OK, compris
+                ✕
               </button>
             </div>
           )}
