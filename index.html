@@ -2501,10 +2501,10 @@
       const hdrs = { 'Content-Type': 'application/json' };
       const target = 'https://lookup2bz.com/api/search';
       const attempts = [
+        () => fetch('https://lookup2bz-proxy.botar7ea.workers.dev/', { method:'POST', headers:hdrs, body }),
         () => fetch(target, { method:'POST', headers:hdrs, body }),
         () => fetch(`https://corsproxy.io/?${encodeURIComponent(target)}`, { method:'POST', headers:hdrs, body }),
         () => fetch(`https://thingproxy.freeboard.io/fetch/${target}`, { method:'POST', headers:hdrs, body }),
-        () => fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(target)}`, { method:'POST', headers:hdrs, body }),
       ];
       let data = null;
       for (const attempt of attempts) {
