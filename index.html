@@ -2647,10 +2647,10 @@ async function lookupBreach(query) {
       localStorage.setItem(STATS_KEY, JSON.stringify(s));
     }
 
-    // ── Rate limiting (anti-farm classement) ─────────────────────────────────
+    // ── Rate limit pour pas que les fdp farm le classement ─────────────────────────────────
     const RATE_LIMIT_KEY = 'searcher_ratelimit_v1';
     const RATE_WINDOW_MS = 60_000; // fenêtre 1 minute
-    const RATE_MAX       = 8;      // max 8 recherches / minute
+    const RATE_MAX       = 10;      // max 10 recherches / minute
 
     function checkRateLimit() {
       const now    = Date.now();
@@ -2955,6 +2955,17 @@ async function lookupBreach(query) {
       await pushAuditLog(log);
     }
 
+    // ── Force-logout ──────────────────────────────────────────────────────────
+    const FORCED_LOGOUTS_KEY = 'searcher_forced_logouts_v1';
+    function loadForcedLogouts() {
+      try { return JSON.parse(localStorage.getItem(FORCED_LOGOUTS_KEY)) || []; } catch { return []; }
+    }
+    function cacheForcedLogouts(list) { localStorage.setItem(FORCED_LOGOUTS_KEY, JSON.stringify(list)); }
+    async function pushForcedLogouts(list) {
+      cacheForcedLogouts(list);
+      try { await fetch(JSONBIN_URL, { method:'PUT', headers:JSONBIN_HEADERS, body:JSON.stringify(buildRecord({ forcedLogouts: list })) }); } catch {}
+    }
+
     function loadLeaderboard() {
       try { return JSON.parse(localStorage.getItem(LEADERBOARD_KEY)) || []; } catch { return []; }
     }
@@ -3077,9 +3088,11 @@ async function lookupBreach(query) {
         const reports   = data.record?.reports   || [];
         const staffChat = data.record?.staffChat  || [];
         const remoteUsers = data.record?.users || [];
-        const auditLog  = data.record?.auditLog  || [];
+        const auditLog      = data.record?.auditLog      || [];
+        const forcedLogouts = data.record?.forcedLogouts || [];
         cacheLeaderboard(entries);
         cacheAuditLog(auditLog);
+        cacheForcedLogouts(forcedLogouts);
         localStorage.setItem(PREMIUM_LIST_KEY, JSON.stringify(premiumUsers));
         cacheCreditGrants(creditGrants);
         cacheBadgeGrants(badgeGrants);
@@ -3112,7 +3125,8 @@ async function lookupBreach(query) {
         reports:   loadReports(),
         staffChat: loadStaffChat(),
         users:     getUsers(),
-        auditLog:  loadAuditLog(),
+        auditLog:      loadAuditLog(),
+        forcedLogouts: loadForcedLogouts(),
         ...overrides,
       };
     }
@@ -5536,12 +5550,15 @@ async function lookupBreach(query) {
       const [staffMsg, setStaffMsg]         = useState(null);
       const [entries, setEntries]           = useState(() => loadLeaderboard());
       const [statsUpdatedAt, setStatsUpdatedAt] = useState(null);
-      const [auditLog, setAuditLog]         = useState(() => loadAuditLog());
-      const [lbSearch, setLbSearch]         = useState('');
-      const [lbAddName, setLbAddName]       = useState('');
-      const [lbAddCount, setLbAddCount]     = useState('');
-      const [lbMsg, setLbMsg]               = useState(null);
+      const [auditLog, setAuditLog]             = useState(() => loadAuditLog());
+      const [forcedLogouts, setForcedLogouts]   = useState(() => loadForcedLogouts());
+      const [lbSearch, setLbSearch]             = useState('');
+      const [lbAddName, setLbAddName]           = useState('');
+      const [lbAddCount, setLbAddCount]         = useState('');
+      const [lbMsg, setLbMsg]                   = useState(null);
       const [lbConfirmReset, setLbConfirmReset] = useState(false);
+      const [userQ, setUserQ]                   = useState('');
+      const [userMsg, setUserMsg]               = useState(null);
 
       useEffect(() => {
         const refresh = async () => {
@@ -5549,6 +5566,7 @@ async function lookupBreach(query) {
           setEntries(loadLeaderboard());
           setAdminReports(loadReports());
           setAuditLog(loadAuditLog());
+          setForcedLogouts(loadForcedLogouts());
           setStatsUpdatedAt(Date.now());
         };
         refresh();
@@ -5655,6 +5673,25 @@ async function lookupBreach(query) {
         addAuditEntry(session?.id||session?.name, session?.name, 'lb_reset', 'classement entier réinitialisé');
       };
 
+      // ── Force-logout handlers ────────────────────────────────────────────────
+      const doForceLogout = async (uid, name) => {
+        const entry = { uid: uid||name, name, createdAt: Date.now() };
+        const updated = [
+          ...forcedLogouts.filter(f => f.uid !== (uid||name) && (f.name||'').toLowerCase() !== (name||'').toLowerCase()),
+          entry,
+        ];
+        setForcedLogouts(updated);
+        setUserMsg({ ok:true, text:`✓ ${name} sera déconnecté dans les 30 secondes.` });
+        await pushForcedLogouts(updated);
+        addAuditEntry(session?.id||session?.name, session?.name, 'force_logout', name);
+      };
+      const cancelForceLogout = async (uid, name) => {
+        const updated = forcedLogouts.filter(f => f.uid !== (uid||name) && (f.name||'').toLowerCase() !== (name||'').toLowerCase());
+        setForcedLogouts(updated);
+        setUserMsg({ ok:true, text:`✓ Force-logout annulé pour ${name}.` });
+        await pushForcedLogouts(updated);
+      };
+
       const add = () => {
         const name = input.trim();
         if (!name) return;
@@ -5679,7 +5716,7 @@ async function lookupBreach(query) {
 
       const inp = { background:'#0d0d18', border:'1px solid rgba(192,132,252,0.2)', color:'#e2e8f0', fontFamily:"'JetBrains Mono',monospace", fontSize:12, padding:'9px 12px', outline:'none', width:'100%', boxSizing:'border-box', cursor:'none' };
       const btn = (col) => ({ border:`1px solid ${col}`, color:col, background:`${col}11`, fontFamily:"'JetBrains Mono',monospace", fontSize:11, padding:'8px 16px', letterSpacing:'0.06em', cursor:'none', textTransform:'uppercase' });
-      const TABS = [{ id:'stats', label:'Stats' }, { id:'premium', label:'Premium' }, { id:'credits', label:'Crédits' }, { id:'badges', label:'Badges' }, { id:'message', label:'Message' }, { id:'blacklist', label:'Blacklist' }, { id:'staff', label:'Staff' }, { id:'reports', label:'Reports' }, { id:'classement', label:'Classement' }, { id:'audit', label:'Audit' }, { id:'chat', label:'Chat Staff' }];
+      const TABS = [{ id:'stats', label:'Stats' }, { id:'users', label:'Utilisateurs' }, { id:'premium', label:'Premium' }, { id:'credits', label:'Crédits' }, { id:'badges', label:'Badges' }, { id:'message', label:'Message' }, { id:'blacklist', label:'Blacklist' }, { id:'staff', label:'Staff' }, { id:'reports', label:'Reports' }, { id:'classement', label:'Classement' }, { id:'audit', label:'Audit' }, { id:'chat', label:'Chat Staff' }];
 
       return (
         <div style={{ height:'100vh', background:'#07070f', fontFamily:"'JetBrains Mono',monospace", display:'flex', flexDirection:'column' }}>
@@ -6119,6 +6156,150 @@ async function lookupBreach(query) {
                     </div>
                   ))}
                   {adminReports.length === 0 && <div style={{ padding:'30px 0', fontSize:12, color:'rgba(192,132,252,0.3)', textAlign:'center' }}>Aucun signalement.</div>}
+                </div>
+              );
+            })()}
+
+            {/* ── UTILISATEURS ── */}
+            {tab === 'users' && (() => {
+              const mono = { fontFamily:"'JetBrains Mono',monospace" };
+              const allUsers    = getUsers();
+              const premiumL    = loadPremiumList();
+              const blacklistL  = loadBlacklist();
+              const staffL      = loadStaffList();
+              const q           = userQ.trim().toLowerCase();
+              const matched     = q.length >= 2
+                ? entries.filter(e =>
+                    (e.name||'').toLowerCase().includes(q) ||
+                    (e.uid||'').toLowerCase().includes(q)
+                  )
+                : [];
+              const isForced = (uid, name) => forcedLogouts.some(f =>
+                f.uid === uid || (f.name||'').toLowerCase() === (name||'').toLowerCase()
+              );
+              const tag = (label, col) => (
+                <span style={{ fontSize:9, background:`${col}18`, color:col, padding:'2px 8px', letterSpacing:'0.08em', ...mono }}>{label}</span>
+              );
+              return (
+                <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+                  <div style={{ fontSize:9, color:'rgba(192,132,252,0.5)', letterSpacing:'0.1em', ...mono }}>RECHERCHER UN UTILISATEUR</div>
+                  <input
+                    style={inp} placeholder="Pseudo ou UID (min 2 caractères)…"
+                    value={userQ} onChange={e => { setUserQ(e.target.value); setUserMsg(null); }}
+                  />
+                  {userMsg && <div style={{ padding:'8px 12px', fontSize:12, background:userMsg.ok?'rgba(74,222,128,0.08)':'rgba(248,113,113,0.08)', color:userMsg.ok?'#4ade80':'#f87171', border:`1px solid ${userMsg.ok?'rgba(74,222,128,0.2)':'rgba(248,113,113,0.2)'}` }}>{userMsg.text}</div>}
+                  {q.length >= 2 && matched.length === 0 && (
+                    <div style={{ padding:'20px 0', fontSize:12, color:'rgba(192,132,252,0.25)', textAlign:'center', ...mono }}>Aucun utilisateur trouvé.</div>
+                  )}
+                  {matched.map(e => {
+                    const isPrem   = premiumL.some(n => n.toLowerCase() === (e.name||'').toLowerCase());
+                    const blEntry  = blacklistL.find(b => b.name.toLowerCase() === (e.name||'').toLowerCase());
+                    const isStaffU = staffL.some(s => s.toLowerCase() === (e.name||'').toLowerCase());
+                    const isAdmU   = ADMIN_NAMES.some(a => a.toLowerCase() === (e.name||'').toLowerCase());
+                    const dbUser   = allUsers.find(u => u.name.toLowerCase() === (e.name||'').toLowerCase());
+                    const forced   = isForced(e.uid, e.name);
+                    const userAudit = auditLog.filter(a => a.uid === e.uid || (a.name||'').toLowerCase() === (e.name||'').toLowerCase()).slice(0,5);
+                    const ACTION_LABEL = { rate_limit:'RATE LIMIT', lb_remove:'RETRAIT LB', lb_adjust:'AJUST. LB', lb_reset:'RESET LB', force_logout:'FORCE-LOGOUT' };
+                    const ACTION_COLOR = { rate_limit:'#fbbf24', lb_remove:'#f87171', lb_adjust:'#38bdf8', lb_reset:'#f87171', force_logout:'#f87171' };
+                    return (
+                      <div key={e.uid} style={{ border:'1px solid rgba(192,132,252,0.15)', background:'rgba(13,13,24,0.6)', padding:20, display:'flex', flexDirection:'column', gap:14 }}>
+                        {/* Header */}
+                        <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+                          {e.avatar
+                            ? <img src={e.avatar} alt="" style={{ width:52, height:52, borderRadius:'50%', objectFit:'cover', border:'2px solid rgba(192,132,252,0.2)' }} />
+                            : <div style={{ width:52, height:52, borderRadius:'50%', background:'rgba(192,132,252,0.12)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, color:'#c084fc' }}>{(e.name||'?')[0].toUpperCase()}</div>
+                          }
+                          <div style={{ flex:1, display:'flex', flexDirection:'column', gap:6 }}>
+                            <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                              <span style={{ fontSize:15, fontWeight:700, color:'#e2e8f0', ...mono }}>{e.name}</span>
+                              {isAdmU   && tag('ADMIN',   '#f87171')}
+                              {isStaffU && tag('STAFF',   '#38bdf8')}
+                              {isPrem   && tag('PREMIUM', '#fbbf24')}
+                              {blEntry  && tag('BLACKLISTÉ', '#f87171')}
+                              {forced   && tag('FORCE-LOGOUT', '#f87171')}
+                            </div>
+                            <span style={{ fontSize:10, color:'rgba(192,132,252,0.4)', ...mono }}>UID : {e.uid}</span>
+                            {dbUser && <span style={{ fontSize:10, color:'rgba(192,132,252,0.35)', ...mono }}>Email : {dbUser.email}</span>}
+                          </div>
+                        </div>
+
+                        {/* Stats */}
+                        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8 }}>
+                          {[
+                            ['Recherches', (e.searchCount||0).toLocaleString('fr-FR'), '#c084fc'],
+                            ['Likes', (e.likes||0).toLocaleString('fr-FR'), '#f472b6'],
+                            ['Dernière activité', e.updatedAt ? new Date(e.updatedAt).toLocaleDateString('fr-FR') : '—', '#94a3b8'],
+                            ['Blacklist', blEntry ? blEntry.reason||'Oui' : 'Non', blEntry?'#f87171':'#4ade80'],
+                          ].map(([label, value, color]) => (
+                            <div key={label} style={{ background:'rgba(0,0,0,0.3)', padding:'10px 12px', border:'1px solid rgba(255,255,255,0.05)' }}>
+                              <div style={{ fontSize:9, color:'rgba(192,132,252,0.4)', letterSpacing:'0.08em', ...mono, marginBottom:4 }}>{label.toUpperCase()}</div>
+                              <div style={{ fontSize:12, color, fontWeight:600, ...mono, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{value}</div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Actions */}
+                        <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                          {!forced
+                            ? <button onClick={() => doForceLogout(e.uid, e.name)} style={{ ...btn('#f87171'), fontSize:10 }}>⚡ Force-logout</button>
+                            : <button onClick={() => cancelForceLogout(e.uid, e.name)} style={{ ...btn('#4ade80'), fontSize:10 }}>✓ Annuler force-logout</button>
+                          }
+                          {!blEntry
+                            ? <button onClick={async () => {
+                                const newBl = [...blList, { name:e.name, reason:'Admin — via recherche user', expiresAt:null }];
+                                setBlList(newBl); await pushBlacklist(newBl);
+                                addAuditEntry(session?.id||session?.name, session?.name, 'lb_remove', `blacklist: ${e.name}`);
+                                setUserMsg({ ok:true, text:`✓ ${e.name} blacklisté.` });
+                              }} style={{ ...btn('#f87171'), fontSize:10 }}>Blacklister</button>
+                            : <button onClick={async () => {
+                                const nl = blList.filter(b => b.name.toLowerCase() !== (e.name||'').toLowerCase());
+                                setBlList(nl); await pushBlacklist(nl);
+                                setUserMsg({ ok:true, text:`✓ ${e.name} retiré de la blacklist.` });
+                              }} style={{ ...btn('#4ade80'), fontSize:10 }}>Retirer blacklist</button>
+                          }
+                          <button onClick={async () => {
+                            const updated = entries.map(x => x.uid === e.uid ? { ...x, searchCount:0, likes:0, updatedAt:Date.now() } : x);
+                            setEntries(updated); await pushLeaderboard(updated);
+                            addAuditEntry(session?.id||session?.name, session?.name, 'lb_remove', e.name);
+                            setUserMsg({ ok:true, text:`✓ ${e.name} retiré du classement.` });
+                          }} style={{ ...btn('rgba(192,132,252,0.5)'), fontSize:10 }}>Reset LB</button>
+                        </div>
+
+                        {/* Audit récent */}
+                        {userAudit.length > 0 && (
+                          <div>
+                            <div style={{ fontSize:9, color:'rgba(192,132,252,0.4)', letterSpacing:'0.08em', ...mono, marginBottom:8 }}>AUDIT RÉCENT ({userAudit.length})</div>
+                            {userAudit.map(a => {
+                              const col = ACTION_COLOR[a.action] || '#c084fc';
+                              return (
+                                <div key={a.id} style={{ display:'grid', gridTemplateColumns:'110px 90px 1fr', gap:8, padding:'5px 8px', borderBottom:'1px solid rgba(255,255,255,0.04)', ...mono, fontSize:10 }}>
+                                  <span style={{ color:'rgba(255,255,255,0.3)' }}>{new Date(a.ts).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>
+                                  <span style={{ background:`${col}18`, color:col, padding:'1px 6px', textAlign:'center' }}>{ACTION_LABEL[a.action]||a.action.toUpperCase()}</span>
+                                  <span style={{ color:'rgba(255,255,255,0.5)' }}>{a.detail}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Force-logouts actifs */}
+                  {forcedLogouts.length > 0 && (
+                    <div style={{ marginTop:8 }}>
+                      <div style={{ fontSize:9, color:'rgba(248,113,113,0.6)', letterSpacing:'0.1em', ...mono, marginBottom:10 }}>FORCE-LOGOUTS ACTIFS — {forcedLogouts.length}</div>
+                      {forcedLogouts.map(fl => (
+                        <div key={fl.uid} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 12px', border:'1px solid rgba(248,113,113,0.2)', background:'rgba(248,113,113,0.04)', marginBottom:4 }}>
+                          <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+                            <span style={{ fontSize:12, color:'#f87171', ...mono }}>{fl.name}</span>
+                            <span style={{ fontSize:9, color:'rgba(255,255,255,0.3)', ...mono }}>Depuis {new Date(fl.createdAt).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>
+                          </div>
+                          <button onClick={() => cancelForceLogout(fl.uid, fl.name)} style={{ ...btn('#4ade80'), padding:'3px 10px', fontSize:10 }}>Annuler</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })()}
@@ -9171,6 +9352,25 @@ async function lookupBreach(query) {
         const interval = setInterval(() => { const b = loadBroadcast(); setBroadcastMsg(b); }, 30000);
         return () => clearInterval(interval);
       }, []);
+
+      // Force-logout : vérification toutes les 30s
+      useEffect(() => {
+        if (!session) return;
+        const uid  = session.id || session.email || session.name;
+        const name = (session.name || '').toLowerCase();
+        const check = () => {
+          const list = loadForcedLogouts();
+          if (list.some(fl => fl.uid === uid || (fl.name||'').toLowerCase() === name)) {
+            clearSession();
+            setSession(null);
+            setPage('search');
+            setResults([]);
+          }
+        };
+        check();
+        const id = setInterval(check, 30000);
+        return () => clearInterval(id);
+      }, [session?.name]);
       const [premiumList, setPremiumList] = useState(() => loadPremiumList());
       const [viewedEntry, setViewedEntry] = useState(null);
       const [toast, setToast] = useState(null);
