@@ -9199,6 +9199,8 @@ async function lookupBreach(query) {
     function StaffPanel({ session, onBack }) {
       const [reports, setReports] = useState(() => loadReports());
       const [noteMap, setNoteMap] = useState({});
+      const [tab, setTab]         = useState('reports');
+      const [userQ, setUserQ]     = useState('');
 
       useEffect(() => {
         const tick = () => fetchLeaderboard().then(() => setReports(loadReports()));
@@ -9220,6 +9222,8 @@ async function lookupBreach(query) {
         setReports(updated); await pushReports(updated);
       };
 
+      const STAFF_TABS = [{ id:'reports', label:'Signalements' }, { id:'users', label:'Utilisateurs' }];
+
       return (
         <div style={{ height:'100vh', background:'#07070f', ..._staffMono, display:'flex', flexDirection:'column', cursor:'none' }}>
           {/* Header */}
@@ -9233,27 +9237,123 @@ async function lookupBreach(query) {
           </div>
           {/* Two-column body */}
           <div style={{ flex:1, minHeight:0, display:'flex', overflow:'hidden' }}>
-            {/* Left: reports */}
-            <div style={{ flex:1, minWidth:0, overflowY:'auto', padding:'28px 32px' }}>
-              {visibleReports.length === 0 && myEscalated.length === 0 && (
-                <div style={{ fontSize:12, color:'rgba(192,132,252,0.45)', textAlign:'center', padding:'40px 0' }}>Aucun signalement en attente.</div>
+            {/* Left: tabs + content */}
+            <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column' }}>
+              {/* Tab bar */}
+              <div style={{ display:'flex', borderBottom:'1px solid rgba(192,132,252,0.12)', flexShrink:0 }}>
+                {STAFF_TABS.map(t => (
+                  <button key={t.id} onClick={() => setTab(t.id)} style={{ padding:'10px 22px', background:'none', border:'none', borderBottom:tab===t.id?'2px solid #38bdf8':'2px solid transparent', color:tab===t.id?'#38bdf8':'rgba(192,132,252,0.35)', fontSize:11, letterSpacing:'0.08em', textTransform:'uppercase', cursor:'none', ..._staffMono, marginBottom:-1 }}>{t.label}</button>
+                ))}
+              </div>
+              {/* Signalements */}
+              {tab === 'reports' && (
+                <div style={{ flex:1, overflowY:'auto', padding:'28px 32px' }}>
+                  {visibleReports.length === 0 && myEscalated.length === 0 && (
+                    <div style={{ fontSize:12, color:'rgba(192,132,252,0.45)', textAlign:'center', padding:'40px 0' }}>Aucun signalement en attente.</div>
+                  )}
+                  {visibleReports.length > 0 && (<>
+                    <div style={{ fontSize:9, color:'rgba(56,189,248,0.5)', letterSpacing:'0.1em', marginBottom:14 }}>SIGNALEMENTS OUVERTS — {visibleReports.length}</div>
+                    <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:24 }}>
+                      {visibleReports.map(r => (
+                        <StaffReportCard key={r.id} r={r} showEscalate={true} noteMap={noteMap} setNoteMap={setNoteMap} escalate={escalate} closeReport={closeReport} />
+                      ))}
+                    </div>
+                  </>)}
+                  {myEscalated.length > 0 && (<>
+                    <div style={{ fontSize:9, color:'rgba(251,191,36,0.5)', letterSpacing:'0.1em', marginBottom:14 }}>ESCALADÉS VERS ADMIN — {myEscalated.length}</div>
+                    <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                      {myEscalated.map(r => (
+                        <StaffReportCard key={r.id} r={r} showEscalate={false} noteMap={noteMap} setNoteMap={setNoteMap} escalate={escalate} closeReport={closeReport} />
+                      ))}
+                    </div>
+                  </>)}
+                </div>
               )}
-              {visibleReports.length > 0 && (<>
-                <div style={{ fontSize:9, color:'rgba(56,189,248,0.5)', letterSpacing:'0.1em', marginBottom:14 }}>SIGNALEMENTS OUVERTS — {visibleReports.length}</div>
-                <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:24 }}>
-                  {visibleReports.map(r => (
-                    <StaffReportCard key={r.id} r={r} showEscalate={true} noteMap={noteMap} setNoteMap={setNoteMap} escalate={escalate} closeReport={closeReport} />
-                  ))}
-                </div>
-              </>)}
-              {myEscalated.length > 0 && (<>
-                <div style={{ fontSize:9, color:'rgba(251,191,36,0.5)', letterSpacing:'0.1em', marginBottom:14 }}>ESCALADÉS VERS ADMIN — {myEscalated.length}</div>
-                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                  {myEscalated.map(r => (
-                    <StaffReportCard key={r.id} r={r} showEscalate={false} noteMap={noteMap} setNoteMap={setNoteMap} escalate={escalate} closeReport={closeReport} />
-                  ))}
-                </div>
-              </>)}
+              {/* Utilisateurs */}
+              {tab === 'users' && (() => {
+                const entries    = loadLeaderboard();
+                const premiumL   = loadPremiumList();
+                const blacklistL = loadBlacklist();
+                const staffL     = loadStaffList();
+                const auditL     = loadAuditLog();
+                const q          = userQ.trim().toLowerCase();
+                const matched    = q.length >= 2
+                  ? entries.filter(e => (e.name||'').toLowerCase().includes(q) || (e.uid||'').toLowerCase().includes(q))
+                  : [];
+                const tag = (label, col) => (
+                  <span style={{ fontSize:9, background:`${col}18`, color:col, padding:'2px 8px', letterSpacing:'0.08em', ..._staffMono }}>{label}</span>
+                );
+                const ACTION_LABEL = { rate_limit:'RATE LIMIT', lb_remove:'RETRAIT LB', lb_adjust:'AJUST. LB', lb_reset:'RESET LB', force_logout:'FORCE-LOGOUT' };
+                const ACTION_COLOR = { rate_limit:'#fbbf24', lb_remove:'#f87171', lb_adjust:'#38bdf8', lb_reset:'#f87171', force_logout:'#f87171' };
+                return (
+                  <div style={{ flex:1, overflowY:'auto', padding:'28px 32px', display:'flex', flexDirection:'column', gap:14 }}>
+                    <div style={{ fontSize:9, color:'rgba(56,189,248,0.45)', letterSpacing:'0.1em', ..._staffMono }}>RECHERCHER UN UTILISATEUR</div>
+                    <input style={_staffInp} placeholder="Pseudo ou UID (min 2 caractères)…" value={userQ} onChange={e => setUserQ(e.target.value)} />
+                    {q.length >= 2 && matched.length === 0 && (
+                      <div style={{ padding:'20px 0', fontSize:12, color:'rgba(192,132,252,0.25)', textAlign:'center', ..._staffMono }}>Aucun utilisateur trouvé.</div>
+                    )}
+                    {matched.map(e => {
+                      const isPrem   = premiumL.some(n => n.toLowerCase() === (e.name||'').toLowerCase());
+                      const blEntry  = blacklistL.find(b => b.name.toLowerCase() === (e.name||'').toLowerCase());
+                      const isStaffU = staffL.some(s => s.toLowerCase() === (e.name||'').toLowerCase());
+                      const isAdmU   = ADMIN_NAMES.some(a => a.toLowerCase() === (e.name||'').toLowerCase());
+                      const forced   = loadForcedLogouts().some(f => f.uid === e.uid || (f.name||'').toLowerCase() === (e.name||'').toLowerCase());
+                      const userAudit = auditL.filter(a => a.uid === e.uid || (a.name||'').toLowerCase() === (e.name||'').toLowerCase()).slice(0,5);
+                      return (
+                        <div key={e.uid} style={{ border:'1px solid rgba(56,189,248,0.12)', background:'rgba(13,13,24,0.6)', padding:18, display:'flex', flexDirection:'column', gap:12 }}>
+                          {/* Header */}
+                          <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                            {e.avatar
+                              ? <img src={e.avatar} alt="" style={{ width:46, height:46, borderRadius:'50%', objectFit:'cover', border:'2px solid rgba(56,189,248,0.2)' }} />
+                              : <div style={{ width:46, height:46, borderRadius:'50%', background:'rgba(56,189,248,0.1)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, color:'#38bdf8' }}>{(e.name||'?')[0].toUpperCase()}</div>
+                            }
+                            <div style={{ flex:1, display:'flex', flexDirection:'column', gap:5 }}>
+                              <div style={{ display:'flex', alignItems:'center', gap:7, flexWrap:'wrap' }}>
+                                <span style={{ fontSize:14, fontWeight:700, color:'#e2e8f0', ..._staffMono }}>{e.name}</span>
+                                {isAdmU   && tag('ADMIN',         '#f87171')}
+                                {isStaffU && tag('STAFF',         '#38bdf8')}
+                                {isPrem   && tag('PREMIUM',       '#fbbf24')}
+                                {blEntry  && tag('BLACKLISTÉ',    '#f87171')}
+                                {forced   && tag('FORCE-LOGOUT',  '#f87171')}
+                              </div>
+                              <span style={{ fontSize:10, color:'rgba(192,132,252,0.4)', ..._staffMono }}>UID : {e.uid}</span>
+                            </div>
+                          </div>
+                          {/* Stats */}
+                          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:7 }}>
+                            {[
+                              ['Recherches', (e.searchCount||0).toLocaleString('fr-FR'), '#c084fc'],
+                              ['Likes',      (e.likes||0).toLocaleString('fr-FR'),       '#f472b6'],
+                              ['Dernière activité', e.updatedAt ? new Date(e.updatedAt).toLocaleDateString('fr-FR') : '—', '#94a3b8'],
+                            ].map(([label, value, color]) => (
+                              <div key={label} style={{ background:'rgba(0,0,0,0.3)', padding:'8px 10px', border:'1px solid rgba(255,255,255,0.05)' }}>
+                                <div style={{ fontSize:8, color:'rgba(192,132,252,0.4)', letterSpacing:'0.08em', ..._staffMono, marginBottom:3 }}>{label.toUpperCase()}</div>
+                                <div style={{ fontSize:11, color, fontWeight:600, ..._staffMono }}>{value}</div>
+                              </div>
+                            ))}
+                          </div>
+                          {/* Audit récent */}
+                          {userAudit.length > 0 && (
+                            <div>
+                              <div style={{ fontSize:9, color:'rgba(192,132,252,0.4)', letterSpacing:'0.08em', ..._staffMono, marginBottom:6 }}>AUDIT RÉCENT</div>
+                              {userAudit.map(a => {
+                                const col = ACTION_COLOR[a.action] || '#c084fc';
+                                return (
+                                  <div key={a.id} style={{ display:'grid', gridTemplateColumns:'100px 85px 1fr', gap:6, padding:'4px 6px', borderBottom:'1px solid rgba(255,255,255,0.04)', ..._staffMono, fontSize:10 }}>
+                                    <span style={{ color:'rgba(255,255,255,0.3)' }}>{new Date(a.ts).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>
+                                    <span style={{ background:`${col}18`, color:col, padding:'1px 5px', textAlign:'center' }}>{ACTION_LABEL[a.action]||a.action.toUpperCase()}</span>
+                                    <span style={{ color:'rgba(255,255,255,0.5)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{a.detail}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
             {/* Right: chat */}
             <div style={{ width:340, flexShrink:0, borderLeft:'1px solid rgba(192,132,252,0.1)', display:'flex', flexDirection:'column', minHeight:0 }}>
