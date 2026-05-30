@@ -2647,6 +2647,21 @@ async function lookupBreach(query) {
       localStorage.setItem(STATS_KEY, JSON.stringify(s));
     }
 
+    // ── Rate limiting (anti-farm classement) ─────────────────────────────────
+    const RATE_LIMIT_KEY = 'searcher_ratelimit_v1';
+    const RATE_WINDOW_MS = 60_000; // fenêtre 1 minute
+    const RATE_MAX       = 8;      // max 8 recherches / minute
+
+    function checkRateLimit() {
+      const now    = Date.now();
+      const stored = JSON.parse(localStorage.getItem(RATE_LIMIT_KEY) || '[]');
+      const recent = stored.filter(ts => now - ts < RATE_WINDOW_MS);
+      if (recent.length >= RATE_MAX) return false;
+      recent.push(now);
+      localStorage.setItem(RATE_LIMIT_KEY, JSON.stringify(recent));
+      return true;
+    }
+
     function relativeTime(ts) {
       const diff = Date.now() - ts;
       if (diff < 60000)   return 'à l\'instant';
@@ -2922,6 +2937,24 @@ async function lookupBreach(query) {
     const JSONBIN_URL      = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`;
     const JSONBIN_HEADERS  = { 'X-Master-Key': JSONBIN_KEY, 'Content-Type': 'application/json' };
 
+    // ── Audit Log ─────────────────────────────────────────────────────────────
+    const AUDIT_KEY = 'searcher_audit_v1';
+    const AUDIT_MAX = 500;
+
+    function loadAuditLog() {
+      try { return JSON.parse(localStorage.getItem(AUDIT_KEY)) || []; } catch { return []; }
+    }
+    function cacheAuditLog(log) { localStorage.setItem(AUDIT_KEY, JSON.stringify(log)); }
+    async function pushAuditLog(log) {
+      cacheAuditLog(log);
+      try { await fetch(JSONBIN_URL, { method:'PUT', headers:JSONBIN_HEADERS, body:JSON.stringify(buildRecord({ auditLog: log })) }); } catch {}
+    }
+    async function addAuditEntry(uid, name, action, detail) {
+      const entry = { id: Date.now().toString(36) + Math.random().toString(36).slice(2,5), uid: uid||'?', name: name||'?', action, detail: detail||'', ts: Date.now() };
+      const log = [entry, ...loadAuditLog()].slice(0, AUDIT_MAX);
+      await pushAuditLog(log);
+    }
+
     function loadLeaderboard() {
       try { return JSON.parse(localStorage.getItem(LEADERBOARD_KEY)) || []; } catch { return []; }
     }
@@ -3044,7 +3077,9 @@ async function lookupBreach(query) {
         const reports   = data.record?.reports   || [];
         const staffChat = data.record?.staffChat  || [];
         const remoteUsers = data.record?.users || [];
+        const auditLog  = data.record?.auditLog  || [];
         cacheLeaderboard(entries);
+        cacheAuditLog(auditLog);
         localStorage.setItem(PREMIUM_LIST_KEY, JSON.stringify(premiumUsers));
         cacheCreditGrants(creditGrants);
         cacheBadgeGrants(badgeGrants);
@@ -3077,6 +3112,7 @@ async function lookupBreach(query) {
         reports:   loadReports(),
         staffChat: loadStaffChat(),
         users:     getUsers(),
+        auditLog:  loadAuditLog(),
         ...overrides,
       };
     }
@@ -5500,12 +5536,19 @@ async function lookupBreach(query) {
       const [staffMsg, setStaffMsg]         = useState(null);
       const [entries, setEntries]           = useState(() => loadLeaderboard());
       const [statsUpdatedAt, setStatsUpdatedAt] = useState(null);
+      const [auditLog, setAuditLog]         = useState(() => loadAuditLog());
+      const [lbSearch, setLbSearch]         = useState('');
+      const [lbAddName, setLbAddName]       = useState('');
+      const [lbAddCount, setLbAddCount]     = useState('');
+      const [lbMsg, setLbMsg]               = useState(null);
+      const [lbConfirmReset, setLbConfirmReset] = useState(false);
 
       useEffect(() => {
         const refresh = async () => {
           await fetchLeaderboard();
           setEntries(loadLeaderboard());
           setAdminReports(loadReports());
+          setAuditLog(loadAuditLog());
           setStatsUpdatedAt(Date.now());
         };
         refresh();
@@ -5580,6 +5623,38 @@ async function lookupBreach(query) {
         pushCreditGrant(grant);
       };
 
+      // ── Leaderboard management ────────────────────────────────────────────
+      const lbRemove = async (uid, name) => {
+        const updated = entries.map(e => e.uid === uid ? { ...e, searchCount:0, likes:0, avatar:null, profile:{}, updatedAt:Date.now() } : e);
+        setEntries(updated);
+        setLbMsg({ ok:true, text:`✓ ${name} retiré du classement.` });
+        await pushLeaderboard(updated);
+        addAuditEntry(session?.id||session?.name, session?.name, 'lb_remove', `${name} (uid:${uid})`);
+      };
+      const lbAdjust = async () => {
+        const n = parseInt(lbAddCount, 10);
+        if (!lbAddName.trim() || isNaN(n)) return;
+        const updated = entries.map(e => (e.name||'').toLowerCase() === lbAddName.trim().toLowerCase()
+          ? { ...e, searchCount: Math.max(0, (e.searchCount||0) + n), updatedAt:Date.now() }
+          : e
+        );
+        const found = updated.find(e => (e.name||'').toLowerCase() === lbAddName.trim().toLowerCase());
+        if (!found) { setLbMsg({ ok:false, text:`Utilisateur "${lbAddName}" introuvable dans le classement.` }); return; }
+        setEntries(updated);
+        setLbAddName(''); setLbAddCount('');
+        setLbMsg({ ok:true, text:`${n>=0?'+':''}${n} recherches → ${found.name} (total: ${found.searchCount}).` });
+        await pushLeaderboard(updated);
+        addAuditEntry(session?.id||session?.name, session?.name, 'lb_adjust', `${found.name} ${n>=0?'+':''}${n}`);
+      };
+      const lbReset = async () => {
+        const cleared = entries.map(e => ({ ...e, searchCount:0, likes:0, updatedAt:Date.now() }));
+        setEntries(cleared);
+        setLbConfirmReset(false);
+        setLbMsg({ ok:true, text:'✓ Classement réinitialisé.' });
+        await pushLeaderboard(cleared);
+        addAuditEntry(session?.id||session?.name, session?.name, 'lb_reset', 'classement entier réinitialisé');
+      };
+
       const add = () => {
         const name = input.trim();
         if (!name) return;
@@ -5604,7 +5679,7 @@ async function lookupBreach(query) {
 
       const inp = { background:'#0d0d18', border:'1px solid rgba(192,132,252,0.2)', color:'#e2e8f0', fontFamily:"'JetBrains Mono',monospace", fontSize:12, padding:'9px 12px', outline:'none', width:'100%', boxSizing:'border-box', cursor:'none' };
       const btn = (col) => ({ border:`1px solid ${col}`, color:col, background:`${col}11`, fontFamily:"'JetBrains Mono',monospace", fontSize:11, padding:'8px 16px', letterSpacing:'0.06em', cursor:'none', textTransform:'uppercase' });
-      const TABS = [{ id:'stats', label:'Stats' }, { id:'premium', label:'Premium' }, { id:'credits', label:'Crédits' }, { id:'badges', label:'Badges' }, { id:'message', label:'Message' }, { id:'blacklist', label:'Blacklist' }, { id:'staff', label:'Staff' }, { id:'reports', label:'Reports' }, { id:'chat', label:'Chat Staff' }];
+      const TABS = [{ id:'stats', label:'Stats' }, { id:'premium', label:'Premium' }, { id:'credits', label:'Crédits' }, { id:'badges', label:'Badges' }, { id:'message', label:'Message' }, { id:'blacklist', label:'Blacklist' }, { id:'staff', label:'Staff' }, { id:'reports', label:'Reports' }, { id:'classement', label:'Classement' }, { id:'audit', label:'Audit' }, { id:'chat', label:'Chat Staff' }];
 
       return (
         <div style={{ height:'100vh', background:'#07070f', fontFamily:"'JetBrains Mono',monospace", display:'flex', flexDirection:'column' }}>
@@ -6044,6 +6119,97 @@ async function lookupBreach(query) {
                     </div>
                   ))}
                   {adminReports.length === 0 && <div style={{ padding:'30px 0', fontSize:12, color:'rgba(192,132,252,0.3)', textAlign:'center' }}>Aucun signalement.</div>}
+                </div>
+              );
+            })()}
+
+            {/* ── CLASSEMENT ── */}
+            {tab === 'classement' && (() => {
+              const mono = { fontFamily:"'JetBrains Mono',monospace" };
+              const sorted = [...entries].sort((a,b) => (b.searchCount||0) - (a.searchCount||0));
+              const filtered = lbSearch.trim()
+                ? sorted.filter(e => (e.name||'').toLowerCase().includes(lbSearch.trim().toLowerCase()))
+                : sorted;
+              return (
+                <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
+                  {/* Actions globales */}
+                  <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                    <div style={{ fontSize:9, color:'rgba(192,132,252,0.5)', letterSpacing:'0.1em' }}>AJUSTER LES RECHERCHES D'UN UTILISATEUR</div>
+                    <div style={{ display:'flex', gap:8 }}>
+                      <input style={inp} placeholder="Pseudo exact…" value={lbAddName} onChange={e=>setLbAddName(e.target.value)} />
+                      <input style={{ ...inp, width:100 }} type="number" placeholder="+100 / -50" value={lbAddCount} onChange={e=>setLbAddCount(e.target.value)} />
+                      <button onClick={lbAdjust} disabled={!lbAddName.trim()||!lbAddCount} style={{ ...btn('#38bdf8'), flexShrink:0, opacity:(!lbAddName.trim()||!lbAddCount)?0.4:1 }}>Appliquer</button>
+                    </div>
+                    {lbMsg && <div style={{ padding:'8px 12px', fontSize:12, background:lbMsg.ok?'rgba(74,222,128,0.08)':'rgba(248,113,113,0.08)', color:lbMsg.ok?'#4ade80':'#f87171', border:`1px solid ${lbMsg.ok?'rgba(74,222,128,0.2)':'rgba(248,113,113,0.2)'}` }}>{lbMsg.text}</div>}
+                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                      {!lbConfirmReset
+                        ? <button onClick={()=>setLbConfirmReset(true)} style={{ ...btn('#f87171'), fontSize:10 }}>⚠ Reset classement entier</button>
+                        : <>
+                            <button onClick={lbReset} style={{ ...btn('#f87171') }}>Confirmer le reset</button>
+                            <button onClick={()=>setLbConfirmReset(false)} style={{ ...btn('rgba(192,132,252,0.4)') }}>Annuler</button>
+                          </>
+                      }
+                    </div>
+                  </div>
+                  <div style={{ height:1, background:'rgba(192,132,252,0.1)' }}/>
+                  {/* Recherche */}
+                  <input style={inp} placeholder="Filtrer par pseudo…" value={lbSearch} onChange={e=>setLbSearch(e.target.value)} />
+                  {/* Liste */}
+                  <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                    <div style={{ display:'grid', gridTemplateColumns:'24px 36px 1fr 80px 70px 60px', gap:8, padding:'6px 10px', fontSize:9, color:'rgba(192,132,252,0.4)', letterSpacing:'0.08em', ...mono }}>
+                      <span>#</span><span></span><span>PSEUDO</span><span style={{textAlign:'right'}}>RECHERCHES</span><span style={{textAlign:'right'}}>LIKES</span><span></span>
+                    </div>
+                    {filtered.length === 0 && <div style={{ padding:'20px 0', fontSize:12, color:'rgba(192,132,252,0.25)', textAlign:'center', ...mono }}>Aucune entrée.</div>}
+                    {filtered.map((e,i) => (
+                      <div key={e.uid||e.name} style={{ display:'grid', gridTemplateColumns:'24px 36px 1fr 80px 70px 60px', gap:8, alignItems:'center', padding:'8px 10px', border:'1px solid rgba(192,132,252,0.07)', background:i%2===0?'rgba(255,255,255,0.01)':'transparent' }}>
+                        <span style={{ fontSize:10, color:'rgba(192,132,252,0.35)', ...mono }}>#{sorted.findIndex(x=>x.uid===e.uid)+1}</span>
+                        {e.avatar ? <img src={e.avatar} alt="" style={{ width:28, height:28, borderRadius:'50%', objectFit:'cover' }} /> : <div style={{ width:28, height:28, borderRadius:'50%', background:'rgba(192,132,252,0.12)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color:'#c084fc' }}>{(e.name||'?')[0].toUpperCase()}</div>}
+                        <span style={{ fontSize:12, color:'#e2e8f0', ...mono, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{e.name}</span>
+                        <span style={{ fontSize:13, fontWeight:700, color:'#c084fc', textAlign:'right', ...mono }}>{(e.searchCount||0).toLocaleString('fr-FR')}</span>
+                        <span style={{ fontSize:11, color:'rgba(192,132,252,0.5)', textAlign:'right', ...mono }}>{(e.likes||0).toLocaleString('fr-FR')} ♥</span>
+                        <button onClick={()=>lbRemove(e.uid, e.name)} style={{ ...btn('#f87171'), padding:'3px 8px', fontSize:9 }}>Retirer</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* ── AUDIT LOG ── */}
+            {tab === 'audit' && (() => {
+              const mono = { fontFamily:"'JetBrains Mono',monospace" };
+              const ACTION_COLOR = {
+                rate_limit: '#fbbf24',
+                lb_remove:  '#f87171',
+                lb_adjust:  '#38bdf8',
+                lb_reset:   '#f87171',
+              };
+              const ACTION_LABEL = {
+                rate_limit: 'RATE LIMIT',
+                lb_remove:  'RETRAIT LB',
+                lb_adjust:  'AJUST. LB',
+                lb_reset:   'RESET LB',
+              };
+              return (
+                <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+                    <div style={{ fontSize:9, color:'rgba(192,132,252,0.4)', letterSpacing:'0.1em', ...mono }}>JOURNAL D'AUDIT — {auditLog.length} entrée{auditLog.length!==1?'s':''}</div>
+                    <div style={{ fontSize:9, color:'rgba(192,132,252,0.3)', ...mono }}>Auto-refresh 30s</div>
+                  </div>
+                  {auditLog.length === 0 && <div style={{ padding:'30px 0', fontSize:12, color:'rgba(192,132,252,0.25)', textAlign:'center', ...mono }}>Aucune entrée d'audit.</div>}
+                  {auditLog.map(entry => {
+                    const col = ACTION_COLOR[entry.action] || '#c084fc';
+                    return (
+                      <div key={entry.id} style={{ display:'grid', gridTemplateColumns:'130px 90px 1fr', gap:10, alignItems:'center', padding:'8px 12px', borderBottom:'1px solid rgba(255,255,255,0.04)', ...mono }}>
+                        <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)' }}>{new Date(entry.ts).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span>
+                        <span style={{ fontSize:9, background:`${col}18`, color:col, padding:'2px 8px', textAlign:'center', letterSpacing:'0.06em' }}>{ACTION_LABEL[entry.action]||entry.action.toUpperCase()}</span>
+                        <span style={{ fontSize:11, color:'rgba(255,255,255,0.65)' }}>
+                          <span style={{ color:'#a78bfa' }}>{entry.name}</span>
+                          {entry.detail ? <span style={{ color:'rgba(255,255,255,0.35)' }}> — {entry.detail}</span> : null}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })()}
@@ -9142,6 +9308,15 @@ async function lookupBreach(query) {
           setToast('🔒 Fonctionnalité réservée aux abonnés Premium');
           setTimeout(() => setToast(null), 3500);
           setShowPricing(true);
+          return;
+        }
+
+        /* Rate limit — anti-farm classement */
+        if (!checkRateLimit()) {
+          setToast('⏱ Trop vite — max 8 recherches / minute.');
+          setTimeout(() => setToast(null), 3500);
+          const s = sessionRef.current;
+          addAuditEntry(s?.id||s?.name||'?', s?.name||'?', 'rate_limit', q);
           return;
         }
 
