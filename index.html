@@ -2144,25 +2144,34 @@
     .av-frame-rainbow     { border-style:solid; animation:rainbow-frame 3s linear infinite; }
     .av-frame-fire        { border-style:solid; animation:fire-frame 1.6s ease-in-out infinite; }
     /* ── Toast ── */
-    @keyframes toast-in { from{transform:translateX(-50%) translateY(24px);opacity:0} to{transform:translateX(-50%) translateY(0);opacity:1} }
+    @keyframes toast-slide-in { from{transform:translateX(120%);opacity:0} to{transform:translateX(0);opacity:1} }
     @keyframes toast-shimmer { 0%{background-position:200% center} 100%{background-position:-200% center} }
+    .toast-container { position:fixed; bottom:24px; right:24px; z-index:9000; display:flex; flex-direction:column; gap:8px; pointer-events:none; }
     .toast-notif {
-      position:fixed; bottom:90px; left:50%; transform:translateX(-50%); z-index:9000;
+      pointer-events:auto;
       background:linear-gradient(135deg,rgba(17,12,40,.98),rgba(30,18,64,.98));
       border:1px solid rgba(167,139,250,.5);
       color:#fff; padding:0; border-radius:16px;
       font-family:'Geist',sans-serif;
       backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
-      animation:toast-in .32s cubic-bezier(.34,1.56,.64,1) forwards;
+      animation:toast-slide-in .32s cubic-bezier(.34,1.56,.64,1) forwards;
       box-shadow:0 0 0 1px rgba(167,139,250,.15), 0 20px 60px rgba(0,0,0,.6), 0 0 40px rgba(124,58,237,.2);
       white-space:nowrap; overflow:hidden; min-width:260px;
     }
     .toast-notif-bar { height:2px; background:linear-gradient(90deg,#7c3aed,#a78bfa,#c084fc,#7c3aed); background-size:200% auto; animation:toast-shimmer 2s linear infinite; }
+    .toast-notif.toast-success .toast-notif-bar { background:linear-gradient(90deg,#16a34a,#4ade80,#86efac,#16a34a); }
+    .toast-notif.toast-error .toast-notif-bar { background:linear-gradient(90deg,#dc2626,#f87171,#fca5a5,#dc2626); }
+    .toast-notif.toast-success { border-color:rgba(74,222,128,.4); box-shadow:0 0 0 1px rgba(74,222,128,.1), 0 20px 60px rgba(0,0,0,.6), 0 0 40px rgba(22,163,74,.15); }
+    .toast-notif.toast-error { border-color:rgba(248,113,113,.4); box-shadow:0 0 0 1px rgba(248,113,113,.1), 0 20px 60px rgba(0,0,0,.6), 0 0 40px rgba(220,38,38,.15); }
+    .toast-notif.toast-success .toast-notif-icon { background:rgba(22,163,74,.2); border-color:rgba(74,222,128,.3); }
+    .toast-notif.toast-error .toast-notif-icon { background:rgba(220,38,38,.2); border-color:rgba(248,113,113,.3); }
     .toast-notif-inner { display:flex; align-items:center; gap:14px; padding:14px 20px; }
     .toast-notif-icon { width:36px; height:36px; border-radius:10px; background:rgba(124,58,237,.2); border:1px solid rgba(167,139,250,.3); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
     .toast-notif-text { display:flex; flex-direction:column; gap:1px; }
     .toast-notif-title { font-size:13px; font-weight:700; color:#e2e8f0; letter-spacing:.01em; }
     .toast-notif-sub { font-size:11px; color:rgba(167,139,250,.7); font-family:'JetBrains Mono',monospace; letter-spacing:.04em; }
+    .toast-notif.toast-success .toast-notif-sub { color:rgba(74,222,128,.7); }
+    .toast-notif.toast-error .toast-notif-sub { color:rgba(248,113,113,.7); }
 
     /* ── Sidebar ── */
     .sidebar {
@@ -6890,23 +6899,31 @@ async function lookupBreach(query) {
     }
 
     // ── Toast ────────────────────────────────────────────────────────────────
-    function Toast({ msg }) {
-      if (!msg) return null;
+    function ToastItem({ data }) {
+      const { msg, type } = data;
       const isCredit = msg.includes('crédit');
       const isBonus  = msg.includes('quotidien');
-      const isPremium = msg.includes('Premium');
-      const icon = isPremium ? '🔒' : isBonus ? '🎁' : isCredit ? '⚡' : '✦';
-      const sub  = isPremium ? 'Accès restreint' : isBonus ? 'Bonus quotidien' : isCredit ? 'Mise à jour du solde' : 'Notification';
+      const isPremiumMsg = msg.includes('Premium');
+      const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : isPremiumMsg ? '🔒' : isBonus ? '🎁' : isCredit ? '⚡' : '✦';
+      const sub  = type === 'success' ? 'Succès' : type === 'error' ? 'Erreur' : isPremiumMsg ? 'Accès restreint' : isBonus ? 'Bonus quotidien' : isCredit ? 'Mise à jour du solde' : 'Notification';
       return (
-        <div className="toast-notif">
+        <div className={`toast-notif${type ? ' toast-'+type : ''}`}>
           <div className="toast-notif-bar" />
           <div className="toast-notif-inner">
             <div className="toast-notif-icon">{icon}</div>
             <div className="toast-notif-text">
-              <div className="toast-notif-title">{msg.replace(/^⚡\s*/, '').replace(/^🎉\s*/, '')}</div>
+              <div className="toast-notif-title">{msg.replace(/^[⚡🎉]\s*/, '')}</div>
               <div className="toast-notif-sub">{sub}</div>
             </div>
           </div>
+        </div>
+      );
+    }
+    function Toast({ toasts }) {
+      if (!toasts || !toasts.length) return null;
+      return (
+        <div className="toast-container">
+          {toasts.map(t => <ToastItem key={t.id} data={t} />)}
         </div>
       );
     }
@@ -8703,7 +8720,7 @@ async function lookupBreach(query) {
       return <canvas ref={cvRef} width={520} height={520} className="auth-globe-canvas" />;
     }
 
-    function AuthPage({ onAuth }) {
+    function AuthPage({ onAuth, showToast }) {
       const [tab, setTab]         = useState('login');
       const [name, setName]       = useState('');
       const [email, setEmail]     = useState('');
@@ -8730,6 +8747,7 @@ async function lookupBreach(query) {
           }
           const session = { name: user.name, email: user.email };
           saveSession(session);
+          showToast && showToast(tab === 'register' ? 'Compte créé avec succès !' : 'Connexion réussie !', 'success');
           onAuth(session);
         } catch (err) {
           setError(err.message);
@@ -9580,8 +9598,13 @@ async function lookupBreach(query) {
       }, [session?.name]);
       const [premiumList, setPremiumList] = useState(() => loadPremiumList());
       const [viewedEntry, setViewedEntry] = useState(null);
-      const [toast, setToast] = useState(null);
-      const showToast = msg => { setToast(msg); setTimeout(() => setToast(null), 3500); };
+      const [toasts, setToasts] = useState([]);
+      const toastIdRef = React.useRef(0);
+      const showToast = (msg, type = 'info') => {
+        const id = ++toastIdRef.current;
+        setToasts(prev => [...prev, { id, msg, type }]);
+        setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
+      };
       useEffect(() => { applyTheme(theme); }, []);
       useEffect(() => {
         fetchLeaderboard().then(() => {
@@ -9655,8 +9678,7 @@ async function lookupBreach(query) {
               setCredits(nb); creditsRef.current = nb;
               const delay = isPremium(session) && !localStorage.getItem('searcher_premium_bonus_v1') ? 1800 : 1100;
               setTimeout(() => {
-                setToast(total > 0 ? `⚡ +${total} crédits reçus par un Admin !` : `⚡ ${total} crédits retirés par un Admin.`);
-                setTimeout(() => setToast(null), 3500);
+                showToast(total > 0 ? `+${total} crédits reçus par un Admin !` : `${total} crédits retirés par un Admin.`);
               }, delay);
             }
           }
@@ -9712,16 +9734,14 @@ async function lookupBreach(query) {
 
         /* Premium gate — block before deducting credits */
         if (!isPremium(sessionRef.current) && (isTiktok || isUsername || isPerson || isEncoded || isDomain)) {
-          setToast('🔒 Fonctionnalité réservée aux abonnés Premium');
-          setTimeout(() => setToast(null), 3500);
+          showToast('Fonctionnalité réservée aux abonnés Premium', 'error');
           setShowPricing(true);
           return;
         }
 
         /* Rate limit — anti-farm classement */
         if (!checkRateLimit()) {
-          setToast('⏱ Trop vite — max 8 recherches / minute.');
-          setTimeout(() => setToast(null), 3500);
+          showToast('Trop vite — max 8 recherches / minute.', 'error');
           const s = sessionRef.current;
           addAuditEntry(s?.id||s?.name||'?', s?.name||'?', 'rate_limit', q);
           return;
@@ -9961,7 +9981,7 @@ async function lookupBreach(query) {
           <TurnstileListener onVerified={() => setTsVerified(true)} />
         </div>
       );
-      if (!session) return <AuthPage onAuth={s => setSession(s)} />;
+      if (!session) return <AuthPage onAuth={s => setSession(s)} showToast={showToast} />;
       const bannedEntry = isBlacklisted(session);
       if (bannedEntry) return <BannedPage entry={bannedEntry} />;
 
@@ -10026,7 +10046,7 @@ async function lookupBreach(query) {
             onConfigChange={cfg => { setConfig(cfg); saveConfig(cfg); }} />
           <RedeemModal credits={credits} onCreditsUpdate={b => { setCredits(b); creditsRef.current = b; }} onClose={() => setShowRedeem(false)} visible={showRedeem} />
           <MiniGameModal visible={showMiniGame} onClose={() => setShowMiniGame(false)} credits={credits} onCreditsUpdate={b => { setCredits(b); creditsRef.current = b; }} showToast={showToast} />
-          <Toast msg={toast} />
+          <Toast toasts={toasts} />
         </>
       );
     }
