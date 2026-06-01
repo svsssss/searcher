@@ -6810,7 +6810,7 @@ async function lookupBreach(query) {
       },
     ];
 
-    function PatchnotePage({ onBack, session }) {
+    function PatchnotePage({ onBack, session, showMagnifier }) {
       const BackIcon = () => (
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
           <path d="M19 12H5M5 12l7-7M5 12l7 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
@@ -6819,7 +6819,7 @@ async function lookupBreach(query) {
 
       return (
         <div className="patchnote-root">
-          <Magnifier followSpeed={0.12} />
+          {showMagnifier !== false && <Magnifier followSpeed={0.12} />}
           <WordField compact />
 
           <div className="corner tl">
@@ -7220,7 +7220,7 @@ async function lookupBreach(query) {
     }
 
     // ── Dashboard Page ────────────────────────────────────────────────────────
-    function DashboardPage({ session, credits, onBack, onViewPublic, onLeaderboard }) {
+    function DashboardPage({ session, credits, onBack, onViewPublic, onLeaderboard, showMagnifier }) {
       const [profile, setProfile] = useState(() => loadPublicProfile());
       const [saved, setSaved] = useState(false);
       const [historyItems, setHistoryItems] = useState(() => loadHistory());
@@ -7358,7 +7358,7 @@ async function lookupBreach(query) {
 
       return (
         <div className="dashboard-root">
-          <Magnifier followSpeed={0.12} />
+          {showMagnifier !== false && <Magnifier followSpeed={0.12} />}
           <WordField compact />
 
           <div className="corner tl">
@@ -7984,7 +7984,7 @@ async function lookupBreach(query) {
     }
 
     // ── Leaderboard Page ─────────────────────────────────────────────────────
-    function LeaderboardPage({ session, onBack, onViewProfile }) {
+    function LeaderboardPage({ session, onBack, onViewProfile, showMagnifier }) {
       const [entries, setEntries] = useState(() => [...loadLeaderboard()].sort((a,b) => b.searchCount - a.searchCount));
       const [loading, setLoading] = useState(true);
       const [sortBy, setSortBy] = useState('searches'); // 'searches' | 'likes'
@@ -8071,7 +8071,7 @@ async function lookupBreach(query) {
 
       return (
         <div className="lb-root">
-          <Magnifier followSpeed={0.12} />
+          {showMagnifier !== false && <Magnifier followSpeed={0.12} />}
           <WordField compact />
           <div className="corner tl">
             <button className="logo-btn" onClick={onBack}><svg className="logo" width="26" height="26" viewBox="0 0 26 26" xmlns="http://www.w3.org/2000/svg">
@@ -8953,7 +8953,7 @@ async function lookupBreach(query) {
     }
 
     // ── Bulk Email Page ───────────────────────────────────────────────────────
-    function BulkEmailPage({ onBack }) {
+    function BulkEmailPage({ onBack, showMagnifier }) {
       const [input, setInput] = useState('');
       const [results, setResults] = useState([]);
       const [analyzing, setAnalyzing] = useState(false);
@@ -9000,7 +9000,7 @@ async function lookupBreach(query) {
       return (
         <div className="bulk-root">
           <Cursor />
-          <Magnifier followSpeed={0.12} />
+          {showMagnifier !== false && <Magnifier followSpeed={0.12} />}
           <WordField compact />
           <div className="corner tl">
             <button className="logo-btn" onClick={onBack}>
@@ -9984,15 +9984,15 @@ async function lookupBreach(query) {
             : page === 'staff'
               ? <StaffPanel session={session} onBack={() => setPage('search')} />
             : page === 'leaderboard'
-              ? <LeaderboardPage session={session} onBack={() => setPage('search')} onViewProfile={e => { setViewedEntry(e); setPage('view-profile'); }} />
+              ? <LeaderboardPage session={session} onBack={() => setPage('search')} showMagnifier={config.showMagnifier} onViewProfile={e => { setViewedEntry(e); setPage('view-profile'); }} />
               : page === 'dashboard'
-                ? <DashboardPage session={session} credits={credits} onBack={() => setPage('search')} onViewPublic={() => setPage('public')} onLeaderboard={() => setPage('leaderboard')} />
+                ? <DashboardPage session={session} credits={credits} onBack={() => setPage('search')} showMagnifier={config.showMagnifier} onViewPublic={() => setPage('public')} onLeaderboard={() => setPage('leaderboard')} />
                 : page === 'public'
                   ? <PublicProfilePage session={session} onBack={() => setPage('dashboard')} />
                   : page === 'patchnote'
-                    ? <PatchnotePage onBack={() => setPage('search')} session={session} />
+                    ? <PatchnotePage onBack={() => setPage('search')} showMagnifier={config.showMagnifier} session={session} />
                     : page === 'bulk'
-                      ? <BulkEmailPage onBack={() => setPage('search')} />
+                      ? <BulkEmailPage onBack={() => setPage('search')} showMagnifier={config.showMagnifier} />
                       : page === 'search'
                         ? <SearchPage onSearch={handleSearch} onTheme={() => setShowTheme(true)} onPricing={() => setShowPricing(true)} onProfile={() => setPage('dashboard')} onRedeem={() => setShowRedeem(true)} onPatchnote={() => setPage('patchnote')} onLeaderboard={() => setPage('leaderboard')} onMiniGame={() => setShowMiniGame(true)} miniGameAvailable={miniGameAvailable} credits={credits} followSpeed={config.followSpeed} showMagnifier={config.showMagnifier} session={session} onLogout={handleLogout} onAdmin={() => setPage('admin')} onBulk={() => setPage('bulk')} onStaff={() => setPage('staff')} />
                         : <ResultsPage key={query} query={query} results={results} phoneResult={phoneResult} ipResult={ipResult} whoisResult={whoisResult} shodanResult={shodanResult} personResult={personResult} emailResult={emailResult} imageResult={imageResult} decoderResult={decoderResult} usernameResult={usernameResult} tiktokResult={tiktokResult} breachResult={breachResult} hudsonResult={hudsonResult} steamResult={steamResult} loading={loading} error={error} config={config}
