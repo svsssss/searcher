@@ -8460,6 +8460,8 @@ async function lookupBreach(query) {
         throw new Error('Un compte existe déjà avec cet email.');
       if (isReservedName(name))
         throw new Error('Ce nom est réservé et ne peut pas être utilisé.');
+      if (users.find(u => u.name.trim().toLowerCase() === name.trim().toLowerCase()))
+        throw new Error('Ce nom d\'utilisateur n\'est pas disponible.');
       const user = { name: name.trim(), email: email.trim().toLowerCase(), password };
       localStorage.setItem(USERS_KEY, JSON.stringify([...users, user]));
       return user;
