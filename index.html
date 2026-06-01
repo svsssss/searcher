@@ -2678,7 +2678,7 @@ async function lookupBreach(query) {
     // ── Premium access list ───────────────────────────────────────────────────
     // Comptes locaux : vérifiés par nom (mot de passe requis = sécurisé)
     // Comptes Discord : vérifiés par ID unique (impossible à usurper par nom)
-    const ADMIN_NAMES  = ['svmDEV', 'svss'];
+    const ADMIN_NAMES  = ['svmDEV', 'svss' , 'NxZzBTW'];
     const ADMIN_IDS    = []; // IDs Discord des admins — à remplir si tu utilises Discord
     const PREMIUM_LIST_KEY = 'searcher_premium_v1';
 
@@ -6168,12 +6168,20 @@ async function lookupBreach(query) {
               const blacklistL  = loadBlacklist();
               const staffL      = loadStaffList();
               const q           = userQ.trim().toLowerCase();
-              const matched     = q.length >= 2
+              const matchedEntries = q.length >= 2
                 ? entries.filter(e =>
                     (e.name||'').toLowerCase().includes(q) ||
                     (e.uid||'').toLowerCase().includes(q)
                   )
                 : [];
+              // Users inscrits mais sans aucune recherche (absents du leaderboard)
+              const matchedRegistered = q.length >= 2
+                ? allUsers.filter(u =>
+                    ((u.name||'').toLowerCase().includes(q) || (u.email||'').toLowerCase().includes(q)) &&
+                    !matchedEntries.some(e => (e.name||'').toLowerCase() === (u.name||'').toLowerCase())
+                  )
+                : [];
+              const matched = matchedEntries;
               const isForced = (uid, name) => forcedLogouts.some(f =>
                 f.uid === uid || (f.name||'').toLowerCase() === (name||'').toLowerCase()
               );
@@ -6188,7 +6196,7 @@ async function lookupBreach(query) {
                     value={userQ} onChange={e => { setUserQ(e.target.value); setUserMsg(null); }}
                   />
                   {userMsg && <div style={{ padding:'8px 12px', fontSize:12, background:userMsg.ok?'rgba(74,222,128,0.08)':'rgba(248,113,113,0.08)', color:userMsg.ok?'#4ade80':'#f87171', border:`1px solid ${userMsg.ok?'rgba(74,222,128,0.2)':'rgba(248,113,113,0.2)'}` }}>{userMsg.text}</div>}
-                  {q.length >= 2 && matched.length === 0 && (
+                  {q.length >= 2 && matched.length === 0 && matchedRegistered.length === 0 && (
                     <div style={{ padding:'20px 0', fontSize:12, color:'rgba(192,132,252,0.25)', textAlign:'center', ...mono }}>Aucun utilisateur trouvé.</div>
                   )}
                   {matched.map(e => {
@@ -6281,6 +6289,46 @@ async function lookupBreach(query) {
                             })}
                           </div>
                         )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Users inscrits sans recherche */}
+                  {matchedRegistered.map(u => {
+                    const isPrem   = premiumL.some(n => n.toLowerCase() === (u.name||'').toLowerCase());
+                    const blEntry  = blacklistL.find(b => b.name.toLowerCase() === (u.name||'').toLowerCase());
+                    const isStaffU = staffL.some(s => s.toLowerCase() === (u.name||'').toLowerCase());
+                    const isAdmU   = ADMIN_NAMES.some(a => a.toLowerCase() === (u.name||'').toLowerCase());
+                    return (
+                      <div key={u.email} style={{ border:'1px solid rgba(192,132,252,0.1)', background:'rgba(13,13,24,0.4)', padding:20, display:'flex', flexDirection:'column', gap:10 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+                          <div style={{ width:52, height:52, borderRadius:'50%', background:'rgba(192,132,252,0.08)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, color:'rgba(192,132,252,0.4)' }}>{(u.name||'?')[0].toUpperCase()}</div>
+                          <div style={{ flex:1, display:'flex', flexDirection:'column', gap:6 }}>
+                            <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                              <span style={{ fontSize:15, fontWeight:700, color:'#e2e8f0', ...mono }}>{u.name}</span>
+                              {isAdmU   && tag('ADMIN',   '#f87171')}
+                              {isStaffU && tag('STAFF',   '#38bdf8')}
+                              {isPrem   && tag('PREMIUM', '#fbbf24')}
+                              {blEntry  && tag('BLACKLISTÉ', '#f87171')}
+                              <span style={{ fontSize:9, background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.3)', padding:'2px 8px', letterSpacing:'0.08em', ...mono }}>0 RECHERCHE</span>
+                            </div>
+                            <span style={{ fontSize:10, color:'rgba(192,132,252,0.35)', ...mono }}>Email : {u.email}</span>
+                          </div>
+                        </div>
+                        <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                          {!blEntry
+                            ? <button onClick={async () => {
+                                const newBl = [...blList, { name:u.name, reason:'Admin — via recherche user', expiresAt:null }];
+                                setBlList(newBl); await pushBlacklist(newBl);
+                                setUserMsg({ ok:true, text:`✓ ${u.name} blacklisté.` });
+                              }} style={{ ...btn('#f87171'), fontSize:10 }}>Blacklister</button>
+                            : <button onClick={async () => {
+                                const nl = blList.filter(b => b.name.toLowerCase() !== (u.name||'').toLowerCase());
+                                setBlList(nl); await pushBlacklist(nl);
+                                setUserMsg({ ok:true, text:`✓ ${u.name} retiré de la blacklist.` });
+                              }} style={{ ...btn('#4ade80'), fontSize:10 }}>Retirer blacklist</button>
+                          }
+                        </div>
                       </div>
                     );
                   })}
