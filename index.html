@@ -2248,6 +2248,7 @@
       customApis: [],
       followSpeed: 0.12,
       shodanKey: 'yDYVZESGL41gWxqEdSujNxn8caEeYmEI',
+      showMagnifier: true,
     };
 
     function loadConfig() {
@@ -3666,7 +3667,7 @@ async function lookupBreach(query) {
     }
 
     // ── Theme Modal ───────────────────────────────────────────────────────────
-    function ThemeModal({ theme, onSave, onApply, onClose, visible }) {
+    function ThemeModal({ theme, onSave, onApply, onClose, visible, config, onConfigChange }) {
       const [local, setLocal] = useState({ ...theme });
 
       useEffect(() => {
@@ -3759,6 +3760,27 @@ async function lookupBreach(query) {
                     {FONTS_MONO.map(f => <option key={f} value={f}>{f}</option>)}
                   </select>
                 </div>
+              </div>
+            </div>
+            <div style={{ padding:'14px 20px 0', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
+              <div className="modal-section-title" style={{ marginBottom:12 }}>Interface</div>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 0' }}>
+                <div>
+                  <div style={{ fontSize:13, color:'var(--ink)' }}>Loupe animée</div>
+                  <div style={{ fontSize:11, color:'var(--ink-mute)', marginTop:2 }}>Grande loupe décorative à l'accueil</div>
+                </div>
+                <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer' }}>
+                  <div style={{
+                    width:40, height:22, borderRadius:11, position:'relative', cursor:'pointer',
+                    background: (config?.showMagnifier !== false) ? 'var(--blue)' : 'rgba(255,255,255,0.12)',
+                    transition:'.2s',
+                  }} onClick={() => onConfigChange && onConfigChange({ ...config, showMagnifier: !(config?.showMagnifier !== false) })}>
+                    <div style={{
+                      position:'absolute', top:3, left: (config?.showMagnifier !== false) ? 21 : 3,
+                      width:16, height:16, borderRadius:'50%', background:'#fff', transition:'.2s',
+                    }}/>
+                  </div>
+                </label>
               </div>
             </div>
             <div className="modal-footer">
@@ -5378,7 +5400,7 @@ async function lookupBreach(query) {
 
       return (
         <div className="results-root" style={{ marginLeft: 178 }}>
-          <Magnifier followSpeed={followSpeed} />
+          {config?.showMagnifier !== false && <Magnifier followSpeed={followSpeed} />}
           <WordField compact />
           <Sidebar
             session={session}
@@ -6576,7 +6598,7 @@ async function lookupBreach(query) {
       );
     }
 
-    function SearchPage({ onSearch, onTheme, onPricing, onRedeem, onPatchnote, onLeaderboard, onMiniGame, miniGameAvailable, credits, followSpeed, session, onLogout, onProfile, onAdmin, onBulk, onStaff }) {
+    function SearchPage({ onSearch, onTheme, onPricing, onRedeem, onPatchnote, onLeaderboard, onMiniGame, miniGameAvailable, credits, followSpeed, showMagnifier, session, onLogout, onProfile, onAdmin, onBulk, onStaff }) {
       const [query, setQuery]   = useState('');
       const [focused, setFocused] = useState(false);
       const [history, setHistory] = useState(() => loadHistory());
@@ -6610,7 +6632,7 @@ async function lookupBreach(query) {
 
       return (
         <>
-          <Magnifier followSpeed={followSpeed} />
+          {showMagnifier !== false && <Magnifier followSpeed={followSpeed} />}
           <WordField />
 
           <Sidebar
@@ -8725,7 +8747,7 @@ async function lookupBreach(query) {
               <div className="auth-features">
                 <div className="auth-feature">
                   <div className="auth-feature-icon">🔍</div>
-                  <div className="auth-feature-text"><strong>OSINT complet</strong> — email, IP, username, domaine, téléphone, Steam et plus.</div>
+                  <div className="auth-feature-text"><strong>OSINT complet</strong> — Email, IP, username, domaine, téléphone, Steam et plus.</div>
                 </div>
                 <div className="auth-feature">
                   <div className="auth-feature-icon">🛡️</div>
@@ -9972,7 +9994,7 @@ async function lookupBreach(query) {
                     : page === 'bulk'
                       ? <BulkEmailPage onBack={() => setPage('search')} />
                       : page === 'search'
-                        ? <SearchPage onSearch={handleSearch} onTheme={() => setShowTheme(true)} onPricing={() => setShowPricing(true)} onProfile={() => setPage('dashboard')} onRedeem={() => setShowRedeem(true)} onPatchnote={() => setPage('patchnote')} onLeaderboard={() => setPage('leaderboard')} onMiniGame={() => setShowMiniGame(true)} miniGameAvailable={miniGameAvailable} credits={credits} followSpeed={config.followSpeed} session={session} onLogout={handleLogout} onAdmin={() => setPage('admin')} onBulk={() => setPage('bulk')} onStaff={() => setPage('staff')} />
+                        ? <SearchPage onSearch={handleSearch} onTheme={() => setShowTheme(true)} onPricing={() => setShowPricing(true)} onProfile={() => setPage('dashboard')} onRedeem={() => setShowRedeem(true)} onPatchnote={() => setPage('patchnote')} onLeaderboard={() => setPage('leaderboard')} onMiniGame={() => setShowMiniGame(true)} miniGameAvailable={miniGameAvailable} credits={credits} followSpeed={config.followSpeed} showMagnifier={config.showMagnifier} session={session} onLogout={handleLogout} onAdmin={() => setPage('admin')} onBulk={() => setPage('bulk')} onStaff={() => setPage('staff')} />
                         : <ResultsPage key={query} query={query} results={results} phoneResult={phoneResult} ipResult={ipResult} whoisResult={whoisResult} shodanResult={shodanResult} personResult={personResult} emailResult={emailResult} imageResult={imageResult} decoderResult={decoderResult} usernameResult={usernameResult} tiktokResult={tiktokResult} breachResult={breachResult} hudsonResult={hudsonResult} steamResult={steamResult} loading={loading} error={error} config={config}
                                        onSearch={handleSearch} onTheme={() => setShowTheme(true)} onPricing={() => setShowPricing(true)} onProfile={() => setPage('dashboard')} onRedeem={() => setShowRedeem(true)} onPatchnote={() => setPage('patchnote')} onLeaderboard={() => setPage('leaderboard')} onMiniGame={() => setShowMiniGame(true)} miniGameAvailable={miniGameAvailable} credits={credits}
                                        onBack={() => setPage('search')} followSpeed={config.followSpeed} session={session} onLogout={handleLogout} onAdmin={() => setPage('admin')} onBulk={() => setPage('bulk')} onStaff={() => setPage('staff')} />
@@ -9982,7 +10004,9 @@ async function lookupBreach(query) {
           <ThemeModal theme={theme} onSave={handleSaveTheme}
             onApply={() => setShowTheme(false)}
             onClose={() => { setShowTheme(false); applyTheme(theme); }}
-            visible={showTheme} />
+            visible={showTheme}
+            config={config}
+            onConfigChange={cfg => { setConfig(cfg); saveConfig(cfg); }} />
           <RedeemModal credits={credits} onCreditsUpdate={b => { setCredits(b); creditsRef.current = b; }} onClose={() => setShowRedeem(false)} visible={showRedeem} />
           <MiniGameModal visible={showMiniGame} onClose={() => setShowMiniGame(false)} credits={credits} onCreditsUpdate={b => { setCredits(b); creditsRef.current = b; }} showToast={showToast} />
           <Toast msg={toast} />
