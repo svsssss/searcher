@@ -9067,18 +9067,29 @@ async function lookupBreach(query) {
     // ── Turnstile listener ────────────────────────────────────────────────────
     function TurnstileListener({ onVerified }) {
       React.useEffect(() => {
-        // Définir le callback global AVANT que le widget charge
-        window.onTurnstileSuccess = () => {
+        let done = false;
+        const verify = () => {
+          if (done) return;
+          done = true;
           sessionStorage.setItem('ts_ok', '1');
           onVerified();
         };
-        // Fallback uniquement en local (si widget bloqué par réseau)
+
+        // Callback Turnstile standard
+        window.onTurnstileSuccess = verify;
+
+        // Polling DOM : détecte le token même si le callback a tiré avant le montage du composant (bug iOS Safari)
+        const poll = setInterval(() => {
+          const inp = document.querySelector('input[name="cf-turnstile-response"]');
+          if (inp && inp.value && inp.value.length > 10) verify();
+        }, 400);
+
+        // Fallback local uniquement
         const isLocal = ['localhost','127.0.0.1'].includes(window.location.hostname);
-        const fallback = isLocal ? setTimeout(() => {
-          sessionStorage.setItem('ts_ok', '1');
-          onVerified();
-        }, 4000) : null;
+        const fallback = isLocal ? setTimeout(verify, 4000) : null;
+
         return () => {
+          clearInterval(poll);
           if (fallback) clearTimeout(fallback);
           delete window.onTurnstileSuccess;
         };
