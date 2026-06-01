@@ -8454,7 +8454,12 @@ async function lookupBreach(query) {
     function isReservedName(n) {
       return ADMIN_NAMES.some(a => a.toLowerCase() === n.trim().toLowerCase());
     }
-    function registerUser(name, email, password) {
+    async function hashPassword(password) {
+      const data = new TextEncoder().encode(password);
+      const buf = await crypto.subtle.digest('SHA-256', data);
+      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    async function registerUser(name, email, password) {
       const users = getUsers();
       if (users.find(u => u.email.toLowerCase() === email.toLowerCase()))
         throw new Error('Un compte existe déjà avec cet email.');
@@ -8462,14 +8467,24 @@ async function lookupBreach(query) {
         throw new Error('Ce nom est réservé et ne peut pas être utilisé.');
       if (users.find(u => u.name.trim().toLowerCase() === name.trim().toLowerCase()))
         throw new Error('Ce nom d\'utilisateur n\'est pas disponible.');
-      const user = { name: name.trim(), email: email.trim().toLowerCase(), password };
+      const hashed = await hashPassword(password);
+      const user = { name: name.trim(), email: email.trim().toLowerCase(), password: hashed };
       localStorage.setItem(USERS_KEY, JSON.stringify([...users, user]));
       return user;
     }
-    function loginUser(email, password) {
-      const user = getUsers().find(u =>
-        u.email === email.trim().toLowerCase() && u.password === password
-      );
+    async function loginUser(email, password) {
+      const users = getUsers();
+      const hashed = await hashPassword(password);
+      let user = users.find(u => u.email === email.trim().toLowerCase() && u.password === hashed);
+      if (!user) {
+        // migration: ancien compte avec password en clair
+        const legacy = users.find(u => u.email === email.trim().toLowerCase() && u.password === password);
+        if (legacy) {
+          legacy.password = hashed;
+          localStorage.setItem(USERS_KEY, JSON.stringify(users));
+          user = legacy;
+        }
+      }
       if (!user) throw new Error('Email ou mot de passe incorrect.');
       return user;
     }
@@ -8707,11 +8722,11 @@ async function lookupBreach(query) {
           if (tab === 'register') {
             if (!name.trim()) throw new Error('Le nom est requis.');
             if (password.length < 6) throw new Error('Mot de passe : 6 caractères minimum.');
-            user = registerUser(name, email, password);
+            user = await registerUser(name, email, password);
             await pushUsers(getUsers());
           } else {
             await fetchLeaderboard();
-            user = loginUser(email, password);
+            user = await loginUser(email, password);
           }
           const session = { name: user.name, email: user.email };
           saveSession(session);
