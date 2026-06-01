@@ -9605,10 +9605,15 @@ async function lookupBreach(query) {
         setToasts(prev => [...prev, { id, msg, type }]);
         setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
       };
+      const wasAlreadyPremiumRef = React.useRef(session ? isPremium(session) : false);
       useEffect(() => { applyTheme(theme); }, []);
       useEffect(() => {
         fetchLeaderboard().then(() => {
           setPremiumList(loadPremiumList());
+          if (session && !wasAlreadyPremiumRef.current && isPremium(session)) {
+            setTimeout(() => showToast('★ Félicitations — tu es maintenant Premium !', 'success'), 800);
+          }
+          wasAlreadyPremiumRef.current = session ? isPremium(session) : false;
 
           // Badge Abonné : sync avec le statut premium
           if (session) {
