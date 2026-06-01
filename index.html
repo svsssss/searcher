@@ -9016,13 +9016,14 @@ async function lookupBreach(query) {
           sessionStorage.setItem('ts_ok', '1');
           onVerified();
         };
-        // Fallback : si le widget ne charge pas (localhost, réseau), passer après 4s
-        const fallback = setTimeout(() => {
+        // Fallback uniquement en local (si widget bloqué par réseau)
+        const isLocal = ['localhost','127.0.0.1'].includes(window.location.hostname);
+        const fallback = isLocal ? setTimeout(() => {
           sessionStorage.setItem('ts_ok', '1');
           onVerified();
-        }, 4000);
+        }, 4000) : null;
         return () => {
-          clearTimeout(fallback);
+          if (fallback) clearTimeout(fallback);
           delete window.onTurnstileSuccess;
         };
       }, []);
