@@ -6648,7 +6648,15 @@ async function lookupBreach(query) {
     // ── Patchnote Page ────────────────────────────────────────────────────────
     const CHANGELOG = [
       {
-        version: 'v0.6', name: 'BreachVIP & Globe 3D', date: '18 Mai 2026', latest: true,
+        version: 'v0.7', name: 'Nouveau Domaine', date: '01 Jun 2026', latest: true,
+        entries: [
+          { tag: 'new',  text: <><strong>Domaine personnalisé</strong> — Le site est désormais accessible sur <strong>searcher.bz</strong>. L'ancienne adresse <code>svsssss.github.io/searcher</code> ne sera plus maintenue.</> },
+          { tag: 'new',  text: <><strong>HTTPS enforced</strong> — Connexion sécurisée activée sur le nouveau domaine.</> },
+          { tag: 'fix',  text: <><strong>Sécurité Turnstile</strong> — Le widget de vérification est maintenant correctement lié au domaine <code>searcher.bz</code>. Le bypass automatique en production a été supprimé.</> },
+        ],
+      },
+      {
+        version: 'v0.6', name: 'BreachVIP & Globe 3D', date: '18 Mai 2026', latest: false,
         entries: [
           { tag: 'new',  text: <><strong>BreachVIP intégré</strong> — Nouvelle source de fuites de données : IP, email, username, domaine et téléphone croisés avec la base breach.vip.</> },
           { tag: 'new',  text: <><strong>Résultats détaillés par leak</strong> — Chaque source breach.vip affiche ses champs complets (username, password, ip, uuid…) avec les catégories (minecraft, cracked…).</> },
