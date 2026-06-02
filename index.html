@@ -6536,67 +6536,7 @@ async function lookupBreach(query) {
       );
     }
 
-    // ── Partners Modal ────────────────────────────────────────────────────────
-    function PartnersModal({ onClose }) {
-      return (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.78)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center' }} onClick={onClose}>
-          <div onClick={e => e.stopPropagation()} style={{ width:440, maxWidth:'92vw', background:'#0b0b0f', border:'1px solid rgba(255,255,255,0.1)', borderRadius:10, overflow:'hidden', fontFamily:"'JetBrains Mono',monospace", boxShadow:'0 24px 60px rgba(0,0,0,0.7)' }}>
-            {/* Header */}
-            <div style={{ padding:'13px 18px', borderBottom:'1px solid rgba(255,255,255,0.07)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-              <span style={{ color:'#f5f5f5', fontSize:11.5, letterSpacing:'0.14em', fontWeight:700, display:'flex', alignItems:'center', gap:8 }}>
-                <span style={{ color:'#e53e3e', fontSize:13 }}>✦</span>
-                PARTENAIRES
-              </span>
-              <div style={{ display:'flex', gap:10, alignItems:'center' }}>
-                <span
-                  title="Visiter datacheck.vip"
-                  onClick={() => window.open('https://datacheck.vip','_blank')}
-                  style={{ cursor:'pointer', color:'rgba(255,255,255,0.35)', fontSize:16, lineHeight:1, userSelect:'none', transition:'color .15s' }}
-                  onMouseEnter={e => e.target.style.color='rgba(255,255,255,0.7)'}
-                  onMouseLeave={e => e.target.style.color='rgba(255,255,255,0.35)'}
-                >+</span>
-                <span
-                  onClick={onClose}
-                  style={{ cursor:'pointer', color:'rgba(255,255,255,0.35)', fontSize:18, lineHeight:1, userSelect:'none', transition:'color .15s' }}
-                  onMouseEnter={e => e.target.style.color='rgba(255,255,255,0.7)'}
-                  onMouseLeave={e => e.target.style.color='rgba(255,255,255,0.35)'}
-                >×</span>
-              </div>
-            </div>
-            {/* Description */}
-            <div style={{ padding:'14px 18px 12px' }}>
-              <div style={{ padding:'10px 14px', border:'1px solid rgba(255,255,255,0.09)', borderRadius:7, fontSize:12, color:'rgba(255,255,255,0.65)', lineHeight:1.55, background:'rgba(255,255,255,0.02)' }}>
-                Datacheck : identifiez rapidement les fuites liées à vos informations.
-              </div>
-            </div>
-            {/* Iframe preview */}
-            <div style={{ margin:'0 18px 14px', height:200, border:'1px solid rgba(255,255,255,0.07)', borderRadius:6, overflow:'hidden', background:'#000', cursor:'pointer', position:'relative' }} onClick={() => window.open('https://datacheck.vip','_blank')}>
-              <iframe
-                src="https://datacheck.vip"
-                title="Datacheck.vip"
-                style={{ width:'167%', height:'167%', border:'none', transform:'scale(0.6)', transformOrigin:'top left', pointerEvents:'none' }}
-                sandbox="allow-scripts allow-same-origin"
-              />
-              <div style={{ position:'absolute', inset:0, cursor:'pointer' }} />
-            </div>
-            {/* Close button */}
-            <div style={{ padding:'0 18px 18px' }}>
-              <button
-                onClick={onClose}
-                style={{ width:'100%', padding:'13px', background:'#e53e3e', border:'none', borderRadius:5, color:'#fff', fontFamily:"'JetBrains Mono',monospace", fontSize:11, fontWeight:700, letterSpacing:'0.1em', cursor:'pointer', transition:'background .15s' }}
-                onMouseEnter={e => e.target.style.background='#c53030'}
-                onMouseLeave={e => e.target.style.background='#e53e3e'}
-              >
-                CLOSE PARTENAIRES
-              </button>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
     function Sidebar({ session, credits, activePage, onHome, onProfile, onMiniGame, miniGameAvailable, onLeaderboard, onPatchnote, onPricing, onRedeem, onTheme, onLogout, onAdmin, onBulk, onStaff }) {
-      const [showPartners, setShowPartners] = React.useState(false);
       const [unseenCount, setUnseenCount] = useState(0);
 
       const seenKey = session ? `searcher_seen_reports_${session.name}` : null;
@@ -6625,7 +6565,6 @@ async function lookupBreach(query) {
       };
 
       return (
-        <>
         <div className="sidebar">
           <div className="sidebar-header">
             <svg className="sidebar-logo" width="26" height="26" viewBox="0 0 26 26" xmlns="http://www.w3.org/2000/svg">
@@ -6718,16 +6657,9 @@ async function lookupBreach(query) {
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
               Déconnexion
             </button>
-            <div className="sidebar-sep" />
-            <button className="sidebar-item" onClick={() => setShowPartners(true)} style={{ color:'#e53e3e' }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.8"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              Partenaires
-            </button>
           </div>
           <div className="sidebar-footer"><Clock /> · v0.5 · build 090526</div>
         </div>
-        {showPartners && <PartnersModal onClose={() => setShowPartners(false)} />}
-        </>
       );
     }
 
@@ -10152,21 +10084,51 @@ async function lookupBreach(query) {
 
       return (
         <>
-          {/* Announcement banner */}
+          {/* Announcement modal */}
           {showAnnouncement && (
-            <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:9999, background:'linear-gradient(90deg,#080f1a,#0d0a1f,#080f1a)', borderBottom:'1px solid rgba(192,132,252,0.25)', padding:'9px 20px', display:'flex', alignItems:'center', gap:12, fontFamily:"'JetBrains Mono',monospace" }}>
-              <span style={{ fontSize:13, color:'#4ade80', letterSpacing:'0.1em', flexShrink:0 }}>■</span>
-              <div style={{ flex:1, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
-                <strong style={{ color:'#4ade80', fontSize:12, letterSpacing:'0.06em' }}>BREACHVIP EST DE RETOUR</strong>
-                <span style={{ color:'rgba(192,132,252,0.45)', fontSize:11 }}>|</span>
-                <span style={{ color:'rgba(192,132,252,0.7)', fontSize:11, letterSpacing:'0.03em', fontStyle:'italic' }}>les données ne dorment jamais — et nous non plus.</span>
+            <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.78)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center' }}
+                 onClick={() => { setShowAnnouncement(false); sessionStorage.setItem('ann_dismissed','1'); }}>
+              <div onClick={e => e.stopPropagation()} style={{ width:440, maxWidth:'92vw', background:'#0b0b0f', border:'1px solid rgba(255,255,255,0.1)', borderRadius:10, overflow:'hidden', fontFamily:"'JetBrains Mono',monospace", boxShadow:'0 24px 60px rgba(0,0,0,0.7)' }}>
+                {/* Header */}
+                <div style={{ padding:'13px 18px', borderBottom:'1px solid rgba(255,255,255,0.07)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                  <span style={{ color:'#f5f5f5', fontSize:11.5, letterSpacing:'0.14em', fontWeight:700, display:'flex', alignItems:'center', gap:8 }}>
+                    <span style={{ color:'#e53e3e', fontSize:13 }}>✦</span>
+                    ANNONCE
+                  </span>
+                  <span
+                    onClick={() => { setShowAnnouncement(false); sessionStorage.setItem('ann_dismissed','1'); }}
+                    style={{ cursor:'pointer', color:'rgba(255,255,255,0.4)', fontSize:18, lineHeight:1, userSelect:'none' }}
+                  >×</span>
+                </div>
+                {/* Description */}
+                <div style={{ padding:'14px 18px 12px' }}>
+                  <div style={{ padding:'10px 14px', border:'1px solid rgba(255,255,255,0.09)', borderRadius:7, fontSize:12, color:'rgba(255,255,255,0.65)', lineHeight:1.55, background:'rgba(255,255,255,0.02)' }}>
+                    BreachVIP est actuellement indisponible.
+                  </div>
+                </div>
+                {/* Content */}
+                <div style={{ margin:'0 18px 14px', border:'1px solid rgba(239,68,68,0.2)', borderRadius:6, background:'rgba(239,68,68,0.04)', padding:'20px 18px', display:'flex', flexDirection:'column', gap:10 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                    <span style={{ width:8, height:8, borderRadius:'50%', background:'#ef4444', display:'inline-block', flexShrink:0, animation:'pulse 1.4s ease-in-out infinite' }} />
+                    <span style={{ fontSize:12, fontWeight:700, color:'#ef4444', letterSpacing:'0.08em' }}>SERVICE DOWN</span>
+                  </div>
+                  <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)', lineHeight:1.65 }}>
+                    La source d'intelligence passive sur les fuites de données (credentials, IP compromises, hashs) est temporairement hors ligne. Les recherches d'exposition OSINT sont suspendues jusqu'au rétablissement du service.
+                  </div>
+                  <div style={{ fontSize:10, color:'rgba(239,68,68,0.35)', letterSpacing:'0.05em', marginTop:2 }}>
+                    breach.vip · credential intelligence · passive OSINT · unavailable
+                  </div>
+                </div>
+                {/* Close button */}
+                <div style={{ padding:'0 18px 18px' }}>
+                  <button
+                    onClick={() => { setShowAnnouncement(false); sessionStorage.setItem('ann_dismissed','1'); }}
+                    style={{ width:'100%', padding:'13px', background:'#e53e3e', border:'none', borderRadius:5, color:'#fff', fontFamily:"'JetBrains Mono',monospace", fontSize:11, fontWeight:700, letterSpacing:'0.1em', cursor:'pointer' }}
+                  >
+                    FERMER
+                  </button>
+                </div>
               </div>
-              <button
-                onClick={() => { setShowAnnouncement(false); sessionStorage.setItem('ann_dismissed','1'); }}
-                style={{ background:'transparent', border:'1px solid rgba(192,132,252,0.25)', color:'rgba(192,132,252,0.5)', padding:'3px 12px', cursor:'pointer', fontSize:10, fontFamily:"'JetBrains Mono',monospace", letterSpacing:'0.06em', flexShrink:0 }}
-              >
-                ✕
-              </button>
             </div>
           )}
           {broadcastMsg && !broadcastDismissed && (
