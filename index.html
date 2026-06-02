@@ -4067,8 +4067,8 @@ async function lookupBreach(query) {
             <div className="pricing-cards">
               <PlanCard name="Gratuit" amount="0" desc="Parfait pour démarrer. Aucune carte bancaire requise."
                 features={FREE_FEATURES} ctaLabel="Commencer gratuitement" ctaClass="free" />
-              <PlanCard name="Premium" amount="4,99" desc="Toutes les fonctionnalités pour les professionnels."
-                features={STD_FEATURES} ctaLabel="Choisir Premium — 4,99 €/mois" ctaClass="paid" popular />
+              <PlanCard name="Premium" amount="2,49" desc="Toutes les fonctionnalités pour les professionnels."
+                features={STD_FEATURES} ctaLabel="Choisir Premium — 2,49 €/mois" ctaClass="paid" popular />
             </div>
             <div className="pricing-divider">Paiement sécurisé · Annulation à tout moment · Sans engagement</div>
           </div>
@@ -5788,9 +5788,9 @@ async function lookupBreach(query) {
         setList(newList);
         onPremiumUpdate(newList);
         setInput('');
-        setMsg({ ok: true, text: `✓ ${name} — Premium actif + 500 cr en route.` });
+        setMsg({ ok: true, text: `✓ ${name} — Premium actif + 50 cr en route.` });
         pushPremiumList(newList);
-        pushCreditGrant({ id: 'premium-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name, amount: 500, createdAt: Date.now() });
+        pushCreditGrant({ id: 'premium-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name, amount: 50, createdAt: Date.now() });
       };
 
       const remove = name => {
@@ -8126,8 +8126,8 @@ async function lookupBreach(query) {
         const newList = has ? localPrem.filter(u => u.toLowerCase() !== name.toLowerCase()) : [...localPrem, name];
         setLocalPrem(newList);
         pushPremiumList(newList);
-        if (!has) pushCreditGrant({ id:'premium-'+Date.now().toString(36), name, amount:500, createdAt:Date.now() });
-        setPanelMsg(has ? '✗ Premium retiré' : '✓ Premium donné + 500 cr');
+        if (!has) pushCreditGrant({ id:'premium-'+Date.now().toString(36), name, amount:50, createdAt:Date.now() });
+        setPanelMsg(has ? '✗ Premium retiré' : '✓ Premium donné + 50 cr');
       };
 
       const sendCr = (sign) => {
