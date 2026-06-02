@@ -5746,31 +5746,31 @@ async function lookupBreach(query) {
         pushPremiumList(newList);
       };
 
-      const inp = { background:'#0d0d18', border:'1px solid rgba(192,132,252,0.2)', color:'#e2e8f0', fontFamily:"'JetBrains Mono',monospace", fontSize:12, padding:'9px 12px', outline:'none', width:'100%', boxSizing:'border-box', cursor:'none' };
+      const inp = { background:'var(--input-bg)', border:'1px solid var(--rule)', color:'var(--ink)', fontFamily:"'JetBrains Mono',monospace", fontSize:12, padding:'9px 12px', outline:'none', width:'100%', boxSizing:'border-box', cursor:'none' };
       const btn = (col) => ({ border:`1px solid ${col}`, color:col, background:`${col}11`, fontFamily:"'JetBrains Mono',monospace", fontSize:11, padding:'8px 16px', letterSpacing:'0.06em', cursor:'none', textTransform:'uppercase' });
       const TABS = [{ id:'stats', label:'Stats' }, { id:'users', label:'Utilisateurs' }, { id:'premium', label:'Premium' }, { id:'credits', label:'Crédits' }, { id:'badges', label:'Badges' }, { id:'message', label:'Message' }, { id:'blacklist', label:'Blacklist' }, { id:'staff', label:'Staff' }, { id:'reports', label:'Reports' }, { id:'classement', label:'Classement' }, { id:'audit', label:'Audit' }, { id:'chat', label:'Chat Staff' }];
 
       return (
-        <div style={{ height:'100vh', background:'#07070f', fontFamily:"'JetBrains Mono',monospace", display:'flex', flexDirection:'column' }}>
-          <div style={{ borderBottom:'1px solid rgba(192,132,252,0.2)', padding:'0 32px', display:'flex', alignItems:'center', justifyContent:'space-between', height:56, flexShrink:0 }}>
+        <div style={{ height:'100vh', background:'var(--bg)', fontFamily:"'JetBrains Mono',monospace", display:'flex', flexDirection:'column' }}>
+          <div style={{ borderBottom:'1px solid var(--rule)', padding:'0 32px', display:'flex', alignItems:'center', justifyContent:'space-between', height:56, flexShrink:0 }}>
             <div style={{ display:'flex', alignItems:'center', gap:16 }}>
               <span style={{ fontSize:11, color:'#f87171', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>■ PANEL ADMIN</span>
-              <span style={{ color:'rgba(192,132,252,0.3)' }}>|</span>
-              <span style={{ fontSize:11, color:'rgba(192,132,252,0.6)' }}>Bienvenue, <span style={{ color:'#c084fc', fontWeight:700 }}>{session?.name || 'Admin'}</span></span>
+              <span style={{ color:'var(--ink-mute)' }}>|</span>
+              <span style={{ fontSize:11, color:'var(--ink-mute)' }}>Bienvenue, <span style={{ color:'var(--blue)', fontWeight:700 }}>{session?.name || 'Admin'}</span></span>
             </div>
-            <button onClick={onBack} style={{ ...btn('rgba(192,132,252,0.6)'), padding:'6px 14px' }}>← Retour</button>
+            <button onClick={onBack} style={{ ...btn('var(--blue)'), padding:'6px 14px' }}>← Retour</button>
           </div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', borderBottom:'1px solid rgba(192,132,252,0.12)' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', borderBottom:'1px solid var(--rule)' }}>
             {[{ label:'PREMIUM', value:list.length, color:'#fbbf24' }, { label:'BLACKLISTÉS', value:blList.length, color:'#f87171' }, { label:'ADMINS', value:ADMIN_NAMES.length, color:'#f87171' }, { label:'BROADCAST', value:bcActive?'ACTIF':'INACTIF', color:bcActive?'#4ade80':'#6b7280' }].map((s,i) => (
-              <div key={i} style={{ padding:'16px 24px', borderRight:i<3?'1px solid rgba(192,132,252,0.1)':'none' }}>
-                <div style={{ fontSize:9, color:'rgba(192,132,252,0.4)', letterSpacing:'0.1em', marginBottom:6 }}>{s.label}</div>
+              <div key={i} style={{ padding:'16px 24px', borderRight:i<3?'1px solid var(--rule)':'none' }}>
+                <div style={{ fontSize:9, color:'var(--ink-mute)', letterSpacing:'0.1em', marginBottom:6 }}>{s.label}</div>
                 <div style={{ fontSize:22, fontWeight:700, color:s.color }}>{s.value}</div>
               </div>
             ))}
           </div>
-          <div style={{ display:'flex', borderBottom:'1px solid rgba(192,132,252,0.15)', flexShrink:0 }}>
+          <div style={{ display:'flex', borderBottom:'1px solid var(--rule)', flexShrink:0 }}>
             {TABS.map(t => (
-              <button key={t.id} onClick={()=>setTab(t.id)} style={{ padding:'12px 24px', background:'none', border:'none', borderBottom:tab===t.id?'2px solid #c084fc':'2px solid transparent', color:tab===t.id?'#c084fc':'rgba(192,132,252,0.35)', fontSize:11, letterSpacing:'0.08em', textTransform:'uppercase', cursor:'none', fontFamily:"'JetBrains Mono',monospace", marginBottom:-1 }}>{t.label}</button>
+              <button key={t.id} onClick={()=>setTab(t.id)} style={{ padding:'12px 24px', background:'none', border:'none', borderBottom:tab===t.id?'2px solid var(--blue)':'2px solid transparent', color:tab===t.id?'var(--blue)':'var(--ink-mute)', fontSize:11, letterSpacing:'0.08em', textTransform:'uppercase', cursor:'none', fontFamily:"'JetBrains Mono',monospace", marginBottom:-1 }}>{t.label}</button>
             ))}
           </div>
           {tab === 'chat' && (
@@ -5793,26 +5793,26 @@ async function lookupBreach(query) {
               const top5s  = [...entries].sort((a,b) => (b.searchCount||0)-(a.searchCount||0)).slice(0,5);
               const top5l  = [...entries].sort((a,b) => (b.likes||0)-(a.likes||0)).slice(0,5);
               const mono = { fontFamily:"'JetBrains Mono',monospace" };
-              const card = (val, label, color='#c084fc') => (
-                <div style={{ background:'rgba(13,13,24,0.8)', border:`1px solid ${color}22`, padding:'16px 20px', display:'flex', flexDirection:'column', gap:6 }}>
+              const card = (val, label, color='var(--blue)') => (
+                <div style={{ background:'var(--card-bg)', border:`1px solid var(--rule)`, padding:'16px 20px', display:'flex', flexDirection:'column', gap:6 }}>
                   <div style={{ fontSize:22, fontWeight:700, color, ...mono }}>{typeof val === 'number' ? val.toLocaleString('fr-FR') : val}</div>
-                  <div style={{ fontSize:9, color:`${color}88`, letterSpacing:'0.1em', ...mono }}>{label}</div>
+                  <div style={{ fontSize:9, color:'var(--ink-mute)', letterSpacing:'0.1em', ...mono }}>{label}</div>
                 </div>
               );
               const topRow = (e, i, field) => (
-                <div key={e.uid||e.name} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderBottom:'1px solid rgba(255,255,255,0.04)', background: i===0 ? 'rgba(192,132,252,0.05)' : 'transparent' }}>
-                  <span style={{ fontSize:9, color:'rgba(192,132,252,0.4)', ...mono, width:16, flexShrink:0 }}>#{i+1}</span>
-                  {e.avatar ? <img src={e.avatar} alt="" style={{ width:22, height:22, borderRadius:'50%', objectFit:'cover' }} /> : <div style={{ width:22, height:22, borderRadius:'50%', background:'rgba(192,132,252,0.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color:'#c084fc' }}>{(e.name||'?')[0].toUpperCase()}</div>}
-                  <span style={{ fontSize:12, color:'#e2e8f0', flex:1, ...mono }}>{e.name}</span>
-                  <span style={{ fontSize:12, color:'#c084fc', fontWeight:700, ...mono }}>{(e[field]||0).toLocaleString('fr-FR')}</span>
+                <div key={e.uid||e.name} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderBottom:'1px solid var(--rule)', background: i===0 ? 'var(--ink-faint)' : 'transparent' }}>
+                  <span style={{ fontSize:9, color:'var(--ink-mute)', ...mono, width:16, flexShrink:0 }}>#{i+1}</span>
+                  {e.avatar ? <img src={e.avatar} alt="" style={{ width:22, height:22, borderRadius:'50%', objectFit:'cover' }} /> : <div style={{ width:22, height:22, borderRadius:'50%', background:'var(--ink-faint)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color:'var(--blue)' }}>{(e.name||'?')[0].toUpperCase()}</div>}
+                  <span style={{ fontSize:12, color:'var(--ink)', flex:1, ...mono }}>{e.name}</span>
+                  <span style={{ fontSize:12, color:'var(--blue)', fontWeight:700, ...mono }}>{(e[field]||0).toLocaleString('fr-FR')}</span>
                 </div>
               );
               return (
                 <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
                   {/* Header */}
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                    <div style={{ fontSize:9, color:'rgba(192,132,252,0.4)', ...mono, letterSpacing:'0.12em' }}>STATS EN DIRECT</div>
-                    <div style={{ fontSize:9, color:'rgba(192,132,252,0.3)', ...mono }}>
+                    <div style={{ fontSize:9, color:'var(--ink-mute)', ...mono, letterSpacing:'0.12em' }}>STATS EN DIRECT</div>
+                    <div style={{ fontSize:9, color:'var(--ink-mute)', ...mono }}>
                       {statsUpdatedAt ? `Mis à jour ${new Date(statsUpdatedAt).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})} · auto 30s` : 'Chargement…'}
                     </div>
                   </div>
@@ -9210,7 +9210,7 @@ async function lookupBreach(query) {
 
     // ── Shared staff styles ───────────────────────────────────────────────────
     const _staffMono = { fontFamily:"'JetBrains Mono',monospace" };
-    const _staffInp  = { background:'#0d0d18', border:'1px solid rgba(192,132,252,0.2)', color:'#e2e8f0', ..._staffMono, fontSize:12, padding:'9px 12px', outline:'none', width:'100%', boxSizing:'border-box', cursor:'none' };
+    const _staffInp  = { background:'var(--input-bg)', border:'1px solid var(--rule)', color:'var(--ink)', ..._staffMono, fontSize:12, padding:'9px 12px', outline:'none', width:'100%', boxSizing:'border-box', cursor:'none' };
     const _staffBtn  = (col) => ({ border:`1px solid ${col}`, color:col, background:`${col}11`, ..._staffMono, fontSize:10, padding:'6px 14px', letterSpacing:'0.06em', cursor:'none', textTransform:'uppercase' });
 
     // Defined OUTSIDE StaffPanel so React never remounts it on noteMap state updates
@@ -9283,31 +9283,31 @@ async function lookupBreach(query) {
         await pushStaffChat(updated);
       };
 
-      const roleColor = r => r === 'admin' ? '#c084fc' : '#38bdf8';
+      const roleColor = r => r === 'admin' ? 'var(--blue)' : 'var(--blue)';
       const roleBadge = r => r === 'admin' ? '★ Admin' : '⚑ Staff';
 
       return (
-        <div style={{ display:'flex', flexDirection:'column', flex:1, minHeight:0, background:'rgba(13,13,24,0.7)', border:'1px solid rgba(192,132,252,0.1)' }}>
-          <div style={{ padding:'10px 16px', borderBottom:'1px solid rgba(192,132,252,0.1)', fontSize:9, ..._staffMono, color:'rgba(192,132,252,0.5)', letterSpacing:'0.12em', flexShrink:0 }}>
+        <div style={{ display:'flex', flexDirection:'column', flex:1, minHeight:0, background:'var(--ink-faint)', border:'1px solid var(--rule)' }}>
+          <div style={{ padding:'10px 16px', borderBottom:'1px solid var(--rule)', fontSize:9, ..._staffMono, color:'var(--ink-mute)', letterSpacing:'0.12em', flexShrink:0 }}>
             CHAT STAFF — TEMPS RÉEL
           </div>
           <div className="chat-scroll" style={{ flex:1, minHeight:0, overflowY:'auto', padding:'12px 16px', display:'flex', flexDirection:'column', gap:10 }}>
             {msgs.length === 0 && (
-              <div style={{ fontSize:11, color:'rgba(192,132,252,0.2)', textAlign:'center', padding:'30px 0', ..._staffMono }}>Aucun message.</div>
+              <div style={{ fontSize:11, color:'var(--ink-mute)', textAlign:'center', padding:'30px 0', ..._staffMono }}>Aucun message.</div>
             )}
             {msgs.map(m => (
               <div key={m.id} style={{ display:'flex', flexDirection:'column', gap:3 }}>
                 <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap' }}>
-                  <span style={{ fontSize:9, color:roleColor(m.senderRole), background:`${roleColor(m.senderRole)}18`, padding:'1px 7px', letterSpacing:'0.06em', ..._staffMono, flexShrink:0 }}>{roleBadge(m.senderRole)}</span>
-                  <span style={{ fontSize:12, color:'#e2e8f0', ..._staffMono, fontWeight:600 }}>{m.sender}</span>
-                  <span style={{ fontSize:9, color:'rgba(255,255,255,0.2)', marginLeft:'auto', ..._staffMono }}>{new Date(m.ts).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</span>
+                  <span style={{ fontSize:9, color:'var(--blue)', background:'rgba(0,0,0,0.2)', padding:'1px 7px', letterSpacing:'0.06em', ..._staffMono, flexShrink:0 }}>{roleBadge(m.senderRole)}</span>
+                  <span style={{ fontSize:12, color:'var(--ink)', ..._staffMono, fontWeight:600 }}>{m.sender}</span>
+                  <span style={{ fontSize:9, color:'var(--ink-mute)', marginLeft:'auto', ..._staffMono }}>{new Date(m.ts).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</span>
                 </div>
-                <div style={{ fontSize:12, color:'rgba(255,255,255,0.72)', lineHeight:1.5, fontFamily:"'Geist',sans-serif", paddingLeft:2 }}>{m.text}</div>
+                <div style={{ fontSize:12, color:'var(--ink-soft)', lineHeight:1.5, fontFamily:"'Geist',sans-serif", paddingLeft:2 }}>{m.text}</div>
               </div>
             ))}
             <div ref={bottomRef} />
           </div>
-          <div style={{ padding:'10px 12px', borderTop:'1px solid rgba(192,132,252,0.1)', display:'flex', gap:8, flexShrink:0 }}>
+          <div style={{ padding:'10px 12px', borderTop:'1px solid var(--rule)', display:'flex', gap:8, flexShrink:0 }}>
             <input
               style={{ ..._staffInp, flex:1, width:'auto', padding:'8px 12px' }}
               placeholder="Message…"
@@ -9315,7 +9315,7 @@ async function lookupBreach(query) {
               onChange={e => setText(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
             />
-            <button onClick={send} style={{ ..._staffBtn('rgba(192,132,252,0.5)'), padding:'8px 16px', flexShrink:0 }}>→</button>
+            <button onClick={send} style={{ ..._staffBtn('var(--blue)'), padding:'8px 16px', flexShrink:0 }}>→</button>
           </div>
         </div>
       );
@@ -9351,24 +9351,24 @@ async function lookupBreach(query) {
       const STAFF_TABS = [{ id:'reports', label:'Signalements' }, { id:'users', label:'Utilisateurs' }];
 
       return (
-        <div style={{ height:'100vh', background:'#07070f', ..._staffMono, display:'flex', flexDirection:'column', cursor:'none' }}>
+        <div style={{ height:'100vh', background:'var(--bg)', ..._staffMono, display:'flex', flexDirection:'column', cursor:'none' }}>
           {/* Header */}
-          <div style={{ borderBottom:'1px solid rgba(192,132,252,0.2)', padding:'0 32px', display:'flex', alignItems:'center', justifyContent:'space-between', height:56, flexShrink:0 }}>
+          <div style={{ borderBottom:'1px solid var(--rule)', padding:'0 32px', display:'flex', alignItems:'center', justifyContent:'space-between', height:56, flexShrink:0 }}>
             <div style={{ display:'flex', alignItems:'center', gap:16 }}>
-              <span style={{ fontSize:11, color:'#38bdf8', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>■ PANEL STAFF</span>
-              <span style={{ color:'rgba(192,132,252,0.3)' }}>|</span>
-              <span style={{ fontSize:11, color:'rgba(192,132,252,0.6)' }}>Bienvenue, <span style={{ color:'#7dd3fc', fontWeight:700 }}>{session?.name}</span></span>
+              <span style={{ fontSize:11, color:'var(--blue)', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>■ PANEL STAFF</span>
+              <span style={{ color:'var(--ink-mute)' }}>|</span>
+              <span style={{ fontSize:11, color:'var(--ink-mute)' }}>Bienvenue, <span style={{ color:'var(--blue)', fontWeight:700 }}>{session?.name}</span></span>
             </div>
-            <button onClick={onBack} style={{ ..._staffBtn('rgba(192,132,252,0.6)'), padding:'6px 14px' }}>← Retour</button>
+            <button onClick={onBack} style={{ ..._staffBtn('var(--blue)'), padding:'6px 14px' }}>← Retour</button>
           </div>
           {/* Two-column body */}
           <div style={{ flex:1, minHeight:0, display:'flex', overflow:'hidden' }}>
             {/* Left: tabs + content */}
             <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column' }}>
               {/* Tab bar */}
-              <div style={{ display:'flex', borderBottom:'1px solid rgba(192,132,252,0.12)', flexShrink:0 }}>
+              <div style={{ display:'flex', borderBottom:'1px solid var(--rule)', flexShrink:0 }}>
                 {STAFF_TABS.map(t => (
-                  <button key={t.id} onClick={() => setTab(t.id)} style={{ padding:'10px 22px', background:'none', border:'none', borderBottom:tab===t.id?'2px solid #38bdf8':'2px solid transparent', color:tab===t.id?'#38bdf8':'rgba(192,132,252,0.35)', fontSize:11, letterSpacing:'0.08em', textTransform:'uppercase', cursor:'none', ..._staffMono, marginBottom:-1 }}>{t.label}</button>
+                  <button key={t.id} onClick={() => setTab(t.id)} style={{ padding:'10px 22px', background:'none', border:'none', borderBottom:tab===t.id?'2px solid var(--blue)':'2px solid transparent', color:tab===t.id?'var(--blue)':'var(--ink-mute)', fontSize:11, letterSpacing:'0.08em', textTransform:'uppercase', cursor:'none', ..._staffMono, marginBottom:-1 }}>{t.label}</button>
                 ))}
               </div>
               {/* Signalements */}
