@@ -5424,6 +5424,17 @@ async function lookupBreach(query) {
     // ── Results Page ──────────────────────────────────────────────────────────
     function ResultsPage({ query, results, loading, error, phoneResult, ipResult, whoisResult, shodanResult, personResult, emailResult, imageResult, decoderResult, usernameResult, tiktokResult, breachResult, hudsonResult, steamResult, mcResult, config, onSearch, onTheme, onPricing, onPatchnote, onRedeem, onLeaderboard, onMiniGame, miniGameAvailable, credits, onBack, followSpeed, session, onLogout, onProfile, onAdmin, onBulk, onStaff }) {
       const [input, setInput] = useState(query);
+      const [onlineCount, setOnlineCount] = useState(() => {
+        const cutoff = Date.now() - 3 * 60 * 1000;
+        return loadLeaderboard().filter(e => (e.lastSeen||0) > cutoff).length;
+      });
+      useEffect(() => {
+        const id = setInterval(() => {
+          const cutoff = Date.now() - 3 * 60 * 1000;
+          setOnlineCount(loadLeaderboard().filter(e => (e.lastSeen||0) > cutoff).length);
+        }, 30000);
+        return () => clearInterval(id);
+      }, []);
 
       const submit = e => { e.preventDefault(); if (input.trim()) onSearch(input.trim()); };
 
@@ -5467,7 +5478,7 @@ async function lookupBreach(query) {
           />
 
           <div className="corner tr">
-            <div className="badge"><span className="live" />&nbsp;En ligne</div>
+            <div className="badge"><span className="live" />&nbsp;{onlineCount > 0 ? `${onlineCount} en ligne` : 'En ligne'}</div>
           </div>
 
           <div className="results-topbar">
@@ -6656,6 +6667,17 @@ async function lookupBreach(query) {
       const [query, setQuery]   = useState('');
       const [focused, setFocused] = useState(false);
       const [history, setHistory] = useState(() => loadHistory());
+      const [onlineCount, setOnlineCount] = useState(() => {
+        const cutoff = Date.now() - 3 * 60 * 1000;
+        return loadLeaderboard().filter(e => (e.lastSeen||0) > cutoff).length;
+      });
+      useEffect(() => {
+        const id = setInterval(() => {
+          const cutoff = Date.now() - 3 * 60 * 1000;
+          setOnlineCount(loadLeaderboard().filter(e => (e.lastSeen||0) > cutoff).length);
+        }, 30000);
+        return () => clearInterval(id);
+      }, []);
 
       const suggestions = useMemo(() => {
         const q = query.toLowerCase().trim();
@@ -6709,7 +6731,7 @@ async function lookupBreach(query) {
           />
 
           <div className="corner tr">
-            <div className="badge"><span className="live" />&nbsp;En ligne</div>
+            <div className="badge"><span className="live" />&nbsp;{onlineCount > 0 ? `${onlineCount} en ligne` : 'En ligne'}</div>
           </div>
           <div className="stage" style={{ marginLeft: 178 }}>
             <div className="masthead">
@@ -9642,6 +9664,23 @@ async function lookupBreach(query) {
         const id = setInterval(check, 30000);
         return () => clearInterval(id);
       }, [session?.name]);
+
+      useEffect(() => {
+        if (!session) return;
+        const ping = async () => {
+          const uid = session.id || session.email || session.name;
+          const es = loadLeaderboard();
+          const idx = es.findIndex(e => e.uid === uid);
+          if (idx < 0) return;
+          es[idx] = { ...es[idx], lastSeen: Date.now() };
+          cacheLeaderboard(es);
+          try { await fetch(JSONBIN_URL, { method:'PUT', headers:JSONBIN_HEADERS, body: JSON.stringify(buildRecord({ entries: es })) }); } catch {}
+        };
+        ping();
+        const id = setInterval(ping, 120000);
+        return () => clearInterval(id);
+      }, [session?.name]);
+
       const [premiumList, setPremiumList] = useState(() => loadPremiumList());
       const [viewedEntry, setViewedEntry] = useState(null);
       const [toasts, setToasts] = useState([]);
