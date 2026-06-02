@@ -5740,6 +5740,13 @@ async function lookupBreach(query) {
         await pushLeaderboard(cleared);
         addAuditEntry(session?.id||session?.name, session?.name, 'lb_reset', 'classement entier réinitialisé');
       };
+      const lbDelete = async (uid, name) => {
+        const updated = entries.filter(e => e.uid !== uid);
+        setEntries(updated);
+        setLbMsg({ ok:true, text:`✓ ${name} supprimé définitivement du classement.` });
+        await pushLeaderboard(updated);
+        addAuditEntry(session?.id||session?.name, session?.name, 'lb_delete', `${name} (uid:${uid})`);
+      };
 
       // ── Force-logout handlers ────────────────────────────────────────────────
       const doForceLogout = async (uid, name) => {
@@ -6453,18 +6460,19 @@ async function lookupBreach(query) {
                   <input style={inp} placeholder="Filtrer par pseudo…" value={lbSearch} onChange={e=>setLbSearch(e.target.value)} />
                   {/* Liste */}
                   <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
-                    <div style={{ display:'grid', gridTemplateColumns:'24px 36px 1fr 80px 70px 60px', gap:8, padding:'6px 10px', fontSize:9, color:'rgba(192,132,252,0.4)', letterSpacing:'0.08em', ...mono }}>
-                      <span>#</span><span></span><span>PSEUDO</span><span style={{textAlign:'right'}}>RECHERCHES</span><span style={{textAlign:'right'}}>LIKES</span><span></span>
+                    <div style={{ display:'grid', gridTemplateColumns:'24px 36px 1fr 80px 70px 58px 68px', gap:8, padding:'6px 10px', fontSize:9, color:'var(--ink-mute)', letterSpacing:'0.08em', ...mono }}>
+                      <span>#</span><span></span><span>PSEUDO</span><span style={{textAlign:'right'}}>RECHERCHES</span><span style={{textAlign:'right'}}>LIKES</span><span></span><span></span>
                     </div>
-                    {filtered.length === 0 && <div style={{ padding:'20px 0', fontSize:12, color:'rgba(192,132,252,0.25)', textAlign:'center', ...mono }}>Aucune entrée.</div>}
+                    {filtered.length === 0 && <div style={{ padding:'20px 0', fontSize:12, color:'var(--ink-mute)', textAlign:'center', ...mono }}>Aucune entrée.</div>}
                     {filtered.map((e,i) => (
-                      <div key={e.uid||e.name} style={{ display:'grid', gridTemplateColumns:'24px 36px 1fr 80px 70px 60px', gap:8, alignItems:'center', padding:'8px 10px', border:'1px solid rgba(192,132,252,0.07)', background:i%2===0?'rgba(255,255,255,0.01)':'transparent' }}>
-                        <span style={{ fontSize:10, color:'rgba(192,132,252,0.35)', ...mono }}>#{sorted.findIndex(x=>x.uid===e.uid)+1}</span>
-                        {e.avatar ? <img src={e.avatar} alt="" style={{ width:28, height:28, borderRadius:'50%', objectFit:'cover' }} /> : <div style={{ width:28, height:28, borderRadius:'50%', background:'rgba(192,132,252,0.12)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color:'#c084fc' }}>{(e.name||'?')[0].toUpperCase()}</div>}
-                        <span style={{ fontSize:12, color:'#e2e8f0', ...mono, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{e.name}</span>
-                        <span style={{ fontSize:13, fontWeight:700, color:'#c084fc', textAlign:'right', ...mono }}>{(e.searchCount||0).toLocaleString('fr-FR')}</span>
-                        <span style={{ fontSize:11, color:'rgba(192,132,252,0.5)', textAlign:'right', ...mono }}>{(e.likes||0).toLocaleString('fr-FR')} ♥</span>
+                      <div key={e.uid||e.name} style={{ display:'grid', gridTemplateColumns:'24px 36px 1fr 80px 70px 58px 68px', gap:8, alignItems:'center', padding:'8px 10px', border:'1px solid var(--rule)', background:i%2===0?'rgba(255,255,255,0.01)':'transparent' }}>
+                        <span style={{ fontSize:10, color:'var(--ink-mute)', ...mono }}>#{sorted.findIndex(x=>x.uid===e.uid)+1}</span>
+                        {e.avatar ? <img src={e.avatar} alt="" style={{ width:28, height:28, borderRadius:'50%', objectFit:'cover' }} /> : <div style={{ width:28, height:28, borderRadius:'50%', background:'var(--ink-faint)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color:'var(--blue)' }}>{(e.name||'?')[0].toUpperCase()}</div>}
+                        <span style={{ fontSize:12, color:'var(--ink)', ...mono, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{e.name}</span>
+                        <span style={{ fontSize:13, fontWeight:700, color:'var(--blue)', textAlign:'right', ...mono }}>{(e.searchCount||0).toLocaleString('fr-FR')}</span>
+                        <span style={{ fontSize:11, color:'var(--ink-mute)', textAlign:'right', ...mono }}>{(e.likes||0).toLocaleString('fr-FR')} ♥</span>
                         <button onClick={()=>lbRemove(e.uid, e.name)} style={{ ...btn('#f87171'), padding:'3px 8px', fontSize:9 }}>Retirer</button>
+                        <button onClick={()=>lbDelete(e.uid, e.name)} style={{ ...btn('#f87171'), padding:'3px 8px', fontSize:9, background:'rgba(248,113,113,0.18)' }}>Supprimer</button>
                       </div>
                     ))}
                   </div>
