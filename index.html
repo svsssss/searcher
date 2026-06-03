@@ -615,9 +615,10 @@
       padding: 20px 24px;
       display: flex;
       flex-direction: column;
-      gap: 24px;
-      scrollbar-width: thin;
+      gap: 20px;
+      scrollbar-width: none;
     }
+    .modal-body::-webkit-scrollbar { display: none; }
     .modal-section { display: flex; flex-direction: column; gap: 12px; }
     .modal-section-title {
       font-family: 'JetBrains Mono', monospace;
@@ -983,8 +984,9 @@
       overflow-y: auto;
       border: 1px solid var(--rule);
       padding: 40px;
-      scrollbar-width: thin;
+      scrollbar-width: none;
     }
+    .pricing-modal::-webkit-scrollbar { display: none; }
     .pricing-header {
       text-align: center;
       margin-bottom: 36px;
@@ -1880,9 +1882,11 @@
     .dashboard-body {
       flex:1; overflow-y:auto; overflow-x:hidden; padding:80px 28px 80px;
       width:100%; max-width:1080px; margin:0 auto; box-sizing:border-box;
+      scrollbar-width: none;
       display:grid; grid-template-columns:1fr 360px; gap:28px; align-items:start;
       position:relative; z-index:1;
     }
+    .dashboard-body::-webkit-scrollbar { display: none; }
     @media(max-width:820px){ .dashboard-body{grid-template-columns:1fr;} }
     .dash-edit-col { display:flex; flex-direction:column; gap:18px; }
     .dash-preview-col { display:flex; flex-direction:column; gap:14px; position:sticky; top:16px; }
@@ -3933,8 +3937,7 @@ async function lookupBreach(query) {
                   </select>
                 </div>
               </div>
-            </div>
-            <div style={{ padding:'14px 20px 0', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ borderTop:'1px solid rgba(255,255,255,0.06)', paddingTop:14 }}>
               <div className="modal-section-title" style={{ marginBottom:12 }}>Interface</div>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 0' }}>
                 <div>
@@ -3991,6 +3994,7 @@ async function lookupBreach(query) {
                   </div>
                 </label>
               </div>
+            </div>
             </div>
             <div className="modal-footer">
               <button className="btn-save" onClick={apply}>Appliquer le thème</button>
