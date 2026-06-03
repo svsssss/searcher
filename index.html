@@ -2196,21 +2196,32 @@
       box-shadow: 4px 0 28px rgba(0,0,0,0.35);
     }
     /* items: centre icône quand étroit, aligne à gauche au hover */
-    .sidebar .sidebar-item { padding: 10px 0; justify-content: center; white-space: nowrap; }
+    /* gap:0 en collapsed pour que justify-content:center ne centre pas [icône+gap+texte] */
+    .sidebar .sidebar-item { padding: 10px 0; justify-content: center; white-space: nowrap; gap: 0; }
     .sidebar:hover .sidebar-item { padding: 8px 14px; justify-content: flex-start; gap: 9px; }
-    /* textes masqués par défaut, visibles au hover */
-    .sidebar .si-label,
-    .sidebar .sidebar-brand,
+    /* textes : max-width:0 + overflow:hidden les retire du layout pour centrer l'icône seule */
+    .sidebar .si-label {
+      opacity: 0; max-width: 0; overflow: hidden;
+      transition: opacity 0.15s ease, max-width 0.22s ease;
+      pointer-events: none;
+    }
+    .sidebar:hover .si-label { opacity: 1; max-width: 160px; overflow: visible; pointer-events: auto; }
+    .sidebar .sidebar-brand {
+      opacity: 0; max-width: 0; overflow: hidden;
+      transition: opacity 0.15s ease, max-width 0.22s ease;
+    }
+    .sidebar:hover .sidebar-brand { opacity: 1; max-width: 120px; overflow: visible; }
+    .sidebar .sidebar-footer {
+      opacity: 0; max-width: 0; overflow: hidden;
+      transition: opacity 0.12s ease, max-width 0.22s ease; pointer-events: none;
+    }
+    .sidebar:hover .sidebar-footer { opacity: 1; max-width: 200px; overflow: visible; pointer-events: auto; }
     .sidebar .sidebar-credits,
     .sidebar .sidebar-discord-id,
-    .sidebar .plan-badge,
-    .sidebar .sidebar-footer { opacity: 0; transition: opacity 0.12s ease; pointer-events: none; }
-    .sidebar:hover .si-label,
-    .sidebar:hover .sidebar-brand,
+    .sidebar .plan-badge { opacity: 0; transition: opacity 0.12s ease; pointer-events: none; }
     .sidebar:hover .sidebar-credits,
     .sidebar:hover .sidebar-discord-id,
-    .sidebar:hover .plan-badge,
-    .sidebar:hover .sidebar-footer { opacity: 1; pointer-events: auto; }
+    .sidebar:hover .plan-badge { opacity: 1; pointer-events: auto; }
     /* user section — masqué en collapsed, visible au hover */
     .sidebar .sidebar-user {
       max-height: 0; overflow: hidden; padding: 0 !important; border-bottom: none;
