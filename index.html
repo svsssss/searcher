@@ -95,22 +95,24 @@
     }
 
     .cursor-dot {
-      position: fixed;
+      position: fixed; top: 0; left: 0;
       pointer-events: none;
       width: 6px; height: 6px;
       border-radius: 50%;
       background: var(--ink);
       z-index: 9999;
-      transform: translate(-50%, -50%);
+      will-change: transform;
+      transform: translate3d(-100px, -100px, 0);
     }
     .cursor-ring {
-      position: fixed;
+      position: fixed; top: 0; left: 0;
       pointer-events: none;
       width: 28px; height: 28px;
       border-radius: 50%;
       border: 1.5px solid var(--blue);
       z-index: 9998;
-      transform: translate(-50%, -50%);
+      will-change: transform;
+      transform: translate3d(-100px, -100px, 0);
       transition: width 0.2s ease, height 0.2s ease, background 0.2s ease;
     }
     .cursor-ring.hover { width: 44px; height: 44px; background: rgba(37,99,255,0.06); }
@@ -3674,16 +3676,26 @@ async function lookupBreach(query) {
       const rafId = useRef(null);
 
       useEffect(() => {
+        const TAGS = new Set(['BUTTON','INPUT','A','SELECT','LABEL','TEXTAREA']);
         const onMove = e => {
           target.current = { x: e.clientX, y: e.clientY };
-          ringRef.current?.classList.toggle('hover', !!e.target?.closest?.('input,button,a,.chip,.btn-configure,.logo-btn'));
+          // fast check: only look at direct target and 2 parents — no full closest() traversal
+          let el = e.target, hover = false;
+          for (let i = 0; i < 3 && el; i++) {
+            if (TAGS.has(el.tagName) || el.classList?.contains('chip') || el.classList?.contains('logo-btn')) { hover = true; break; }
+            el = el.parentElement;
+          }
+          ringRef.current?.classList.toggle('hover', hover);
         };
-        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mousemove', onMove, { passive: true });
         const tick = () => {
-          ring.current.x += (target.current.x - ring.current.x) * 0.22;
-          ring.current.y += (target.current.y - ring.current.y) * 0.22;
-          if (dotRef.current) { dotRef.current.style.left = target.current.x + 'px'; dotRef.current.style.top = target.current.y + 'px'; }
-          if (ringRef.current) { ringRef.current.style.left = ring.current.x + 'px'; ringRef.current.style.top = ring.current.y + 'px'; }
+          const dx = target.current.x - ring.current.x;
+          const dy = target.current.y - ring.current.y;
+          ring.current.x += dx * 0.22;
+          ring.current.y += dy * 0.22;
+          // translate3d → GPU composite, zero layout cost
+          if (dotRef.current) dotRef.current.style.transform = `translate3d(${target.current.x - 3}px,${target.current.y - 3}px,0)`;
+          if (ringRef.current) ringRef.current.style.transform = `translate3d(${ring.current.x - 14}px,${ring.current.y - 14}px,0)`;
           rafId.current = requestAnimationFrame(tick);
         };
         rafId.current = requestAnimationFrame(tick);
@@ -3845,6 +3857,7 @@ async function lookupBreach(query) {
     // ── Theme Modal ───────────────────────────────────────────────────────────
     function ThemeModal({ theme, onSave, onApply, onClose, visible, config, onConfigChange }) {
       const [local, setLocal] = useState({ ...theme });
+      const applyTimer = useRef(null);
 
       useEffect(() => {
         if (visible) setLocal({ ...theme });
@@ -3865,16 +3878,18 @@ async function lookupBreach(query) {
       const handleColorChange = (k, v) => {
         const next = { ...local, [k]: v, id: 'custom' };
         setLocal(next);
-        applyTheme(next);
+        clearTimeout(applyTimer.current);
+        applyTimer.current = setTimeout(() => applyTheme(next), 60);
       };
 
       const handleFontChange = (k, v) => {
         const next = { ...local, [k]: v, id: 'custom' };
         setLocal(next);
-        applyTheme(next);
+        clearTimeout(applyTimer.current);
+        applyTimer.current = setTimeout(() => applyTheme(next), 60);
       };
 
-      const apply = () => { saveTheme(local); applyTheme(local); onSave(local); onApply(); };
+      const apply = () => { clearTimeout(applyTimer.current); saveTheme(local); applyTheme(local); onSave(local); onApply(); };
 
       // Palette icon
       const PaletteIcon = () => (
