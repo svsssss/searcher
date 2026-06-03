@@ -2325,6 +2325,7 @@
       followSpeed: 0.12,
       shodanKey: 'yDYVZESGL41gWxqEdSujNxn8caEeYmEI',
       showMagnifier: true,
+      showWordField: false,
     };
 
     function loadConfig() {
@@ -3456,6 +3457,8 @@ async function lookupBreach(query) {
         return out;
       }, [compact]);
 
+      if (loadConfig().showWordField === false) return null;
+
       return (
         <div className="word-field" aria-hidden="true">
           {items.map(it => (
@@ -3967,6 +3970,26 @@ async function lookupBreach(query) {
                     {e.label}
                   </div>
                 ))}
+              </div>
+            </div>
+            <div style={{ padding:'14px 20px 0', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                <div>
+                  <div style={{ fontSize:12, fontWeight:600, color:'var(--ink)', fontFamily:"'Geist',sans-serif" }}>Mots flottants</div>
+                  <div style={{ fontSize:11, color:'var(--ink-mute)', marginTop:2, fontFamily:"'Geist',sans-serif" }}>Termes API animés en arrière-plan</div>
+                </div>
+                <label style={{ cursor:'pointer' }}>
+                  <div style={{
+                    width:40, height:22, borderRadius:99, position:'relative',
+                    background: config?.showWordField ? 'var(--blue)' : 'var(--ink-faint)',
+                    transition:'.2s',
+                  }} onClick={() => onConfigChange && onConfigChange({ ...config, showWordField: !config?.showWordField })}>
+                    <div style={{
+                      position:'absolute', top:3, left: config?.showWordField ? 21 : 3,
+                      width:16, height:16, borderRadius:'50%', background:'#fff', transition:'.2s',
+                    }}/>
+                  </div>
+                </label>
               </div>
             </div>
             <div className="modal-footer">
@@ -6802,29 +6825,29 @@ async function lookupBreach(query) {
               <span className="si-label">Searcher</span>
             </button>
             <button className="sidebar-item" onClick={onMiniGame} style={{ position:'relative' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ color:'#f59e0b' }}><path d="M6 12h4M8 10v4M15 12h.01M18 12h.01M3 8a4 4 0 014-4h10a4 4 0 014 4v4a4 4 0 01-4 4H7a4 4 0 01-4-4V8z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 12h4M8 10v4M15 12h.01M18 12h.01M3 8a4 4 0 014-4h10a4 4 0 014 4v4a4 4 0 01-4 4H7a4 4 0 01-4-4V8z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
               <span className="si-label">Défi</span>
               {miniGameAvailable && <span style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', width:6, height:6, borderRadius:'50%', background:'#22c55e' }} />}
             </button>
             <button className="sidebar-item" onClick={onLeaderboard}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ color:'#22c55e' }}><path d="M18 20V10M12 20V4M6 20v-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M18 20V10M12 20V4M6 20v-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
               <span className="si-label">Classement</span>
             </button>
             <button className="sidebar-item" onClick={onPatchnote}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ color:'#a78bfa' }}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
               <span className="si-label">Patchnotes</span>
             </button>
             <button className="sidebar-item" onClick={onPricing}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ color:'#fbbf24' }}><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg>
               <span className="si-label">Tarifs</span>
             </button>
             <button className="sidebar-item" onClick={onRedeem}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ color:'#38bdf8' }}><path d="M20 12V22H4V12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M22 7H2v5h20V7z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M12 22V7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><path d="M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M20 12V22H4V12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M22 7H2v5h20V7z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M12 22V7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><path d="M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
               <span className="si-label">Utiliser un code</span>
             </button>
             <div className="sidebar-sep" />
             <button className="sidebar-item" onClick={onTheme}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ color:'#8b5cf6' }}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8z" stroke="currentColor" strokeWidth="1.8"/><circle cx="6.5" cy="11.5" r="1.5" fill="currentColor"/><circle cx="9.5" cy="7.5" r="1.5" fill="currentColor"/><circle cx="14.5" cy="7.5" r="1.5" fill="currentColor"/></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8z" stroke="currentColor" strokeWidth="1.8"/><circle cx="6.5" cy="11.5" r="1.5" fill="currentColor"/><circle cx="9.5" cy="7.5" r="1.5" fill="currentColor"/><circle cx="14.5" cy="7.5" r="1.5" fill="currentColor"/></svg>
               <span className="si-label">Apparence</span>
             </button>
             {(isAdmin(session) || isStaff(session)) && (
@@ -6884,7 +6907,7 @@ async function lookupBreach(query) {
       const clearHist = () => { clearHistory(); setHistory([]); };
       const showSuggestions = focused && suggestions.length > 0;
 
-      const TAG_TEXT = 'Téléphone. Tracez une identité, croisez les sources.';
+      const TAG_TEXT = '';
       const [tagTyped, setTagTyped] = useState('');
       const [tagDone, setTagDone] = useState(false);
       useEffect(() => {
