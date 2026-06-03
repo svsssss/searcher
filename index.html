@@ -2369,7 +2369,7 @@
       const cleanIp = ip.trim();
       const [infoRes, privRes] = await Promise.allSettled([
         fetch(`https://ipinfo.io/${encodeURIComponent(cleanIp)}/json`),
-        fetch(`https://proxycheck.io/v2/${encodeURIComponent(cleanIp)}?vpn=1`)
+        fetch(`https://api.ipapi.is?q=${encodeURIComponent(cleanIp)}`)
       ]);
       if (infoRes.status === 'rejected') throw new Error('IP introuvable');
       const data = await infoRes.value.json();
@@ -2378,12 +2378,13 @@
       if (privRes.status === 'fulfilled') {
         try {
           const priv = await privRes.value.json();
-          if (priv.status === 'ok' || priv.status === 'warning') {
-            const ipData = priv[cleanIp];
-            if (ipData) {
-              data._isProxy   = ipData.proxy === 'yes';
-              data._proxyType = ipData.type || null;
-            }
+          if (priv && !priv.error) {
+            data._isVpn        = !!priv.is_vpn;
+            data._isProxy      = !!priv.is_proxy;
+            data._isTor        = !!priv.is_tor;
+            data._isDatacenter = !!priv.is_datacenter;
+            data._isMobile     = !!priv.is_mobile;
+            data._privDone     = true;
           }
         } catch {}
       }
@@ -4162,24 +4163,28 @@ async function lookupBreach(query) {
             {flag && <span className="ip-flag">{flag}</span>}
             {locationParts.join(', ')}
           </div>
-          {/* VPN / Proxy / Network type badge */}
-          {d._isProxy !== undefined && (() => {
-            let badge;
-            if (d._isProxy) {
-              if (d._proxyType === 'TOR')
-                badge = { label:'☠ TOR EXIT NODE', bg:'rgba(239,68,68,0.15)', border:'rgba(239,68,68,0.45)', color:'#ef4444' };
-              else if (d._proxyType === 'DCH')
-                badge = { label:'⬡ DATACENTER / VPN', bg:'rgba(249,115,22,0.1)', border:'rgba(249,115,22,0.35)', color:'#f97316' };
-              else
-                badge = { label:'⚠ VPN / PROXY', bg:'rgba(239,68,68,0.12)', border:'rgba(239,68,68,0.35)', color:'#ef4444' };
-            } else {
-              badge = { label:'✓ RÉSIDENTIEL', bg:'rgba(34,197,94,0.08)', border:'rgba(34,197,94,0.3)', color:'#4ade80' };
-            }
+          {/* VPN / Proxy / Network type badges */}
+          {d._privDone && (() => {
+            const badges = [];
+            if (d._isTor)
+              badges.push({ label:'☠ TOR EXIT NODE',   bg:'rgba(239,68,68,0.15)', border:'rgba(239,68,68,0.45)', color:'#ef4444' });
+            if (d._isVpn)
+              badges.push({ label:'⚠ VPN',             bg:'rgba(239,68,68,0.12)', border:'rgba(239,68,68,0.35)', color:'#ef4444' });
+            if (d._isProxy)
+              badges.push({ label:'⚠ PROXY',           bg:'rgba(239,68,68,0.12)', border:'rgba(239,68,68,0.35)', color:'#ef4444' });
+            if (d._isDatacenter)
+              badges.push({ label:'⬡ DATACENTER',      bg:'rgba(249,115,22,0.1)', border:'rgba(249,115,22,0.35)', color:'#f97316' });
+            if (d._isMobile)
+              badges.push({ label:'◈ MOBILE',           bg:'rgba(99,102,241,0.1)', border:'rgba(99,102,241,0.35)', color:'#818cf8' });
+            if (!badges.length)
+              badges.push({ label:'✓ RÉSIDENTIEL',     bg:'rgba(34,197,94,0.08)', border:'rgba(34,197,94,0.3)',   color:'#4ade80' });
             return (
-              <div style={{ marginTop:8 }}>
-                <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:10, padding:'3px 10px', borderRadius:999, background:badge.bg, border:`1px solid ${badge.border}`, color:badge.color, letterSpacing:'0.07em', fontWeight:700 }}>
-                  {badge.label}
-                </span>
+              <div style={{ marginTop:8, display:'flex', gap:5, flexWrap:'wrap' }}>
+                {badges.map((b, i) => (
+                  <span key={i} style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:10, padding:'3px 10px', borderRadius:999, background:b.bg, border:`1px solid ${b.border}`, color:b.color, letterSpacing:'0.07em', fontWeight:700 }}>
+                    {b.label}
+                  </span>
+                ))}
               </div>
             );
           })()}
