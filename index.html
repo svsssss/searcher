@@ -2211,11 +2211,17 @@
     .sidebar:hover .sidebar-discord-id,
     .sidebar:hover .plan-badge,
     .sidebar:hover .sidebar-footer { opacity: 1; pointer-events: auto; }
-    /* user section */
-    .sidebar .sidebar-user { padding: 10px 0; display: flex; flex-direction: column; align-items: center; }
-    .sidebar:hover .sidebar-user { padding: 12px 14px; align-items: flex-start; }
-    .sidebar .sidebar-user-row { justify-content: center; }
-    .sidebar:hover .sidebar-user-row { justify-content: flex-start; }
+    /* user section — masqué en collapsed, visible au hover */
+    .sidebar .sidebar-user {
+      max-height: 0; overflow: hidden; padding: 0 !important; border-bottom: none;
+      opacity: 0; pointer-events: none;
+      transition: max-height 0.22s ease, padding 0.22s ease, opacity 0.14s ease;
+    }
+    .sidebar:hover .sidebar-user {
+      max-height: 200px; padding: 12px 14px !important; border-bottom: 1px solid var(--rule);
+      opacity: 1; pointer-events: auto; align-items: flex-start;
+    }
+    .sidebar .sidebar-user-row { justify-content: flex-start; }
     .sidebar .sidebar-sep { display: none; }
     .sidebar:hover .sidebar-sep { display: block; }
     .sidebar-logout-wrap {
@@ -2223,10 +2229,13 @@
     }
     .sidebar .sidebar-logout-wrap .sidebar-item { padding: 10px 0; justify-content: center; }
     .sidebar:hover .sidebar-logout-wrap .sidebar-item { padding: 8px 14px; justify-content: flex-start; gap: 9px; }
+    /* header: logo centré en collapsed, aligné à gauche au hover */
     .sidebar-header {
-      padding: 18px 14px 14px; border-bottom: 1px solid var(--rule);
-      display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+      padding: 14px 0; border-bottom: 1px solid var(--rule);
+      display: flex; align-items: center; justify-content: center; gap: 10px; flex-shrink: 0;
+      transition: padding 0.22s ease, justify-content 0.22s ease;
     }
+    .sidebar:hover .sidebar-header { padding: 18px 14px 14px; justify-content: flex-start; }
     .sidebar-logo {
       width: 26px; height: 26px; border-radius: 7px;
       display: block; flex-shrink: 0;
