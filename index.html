@@ -9838,7 +9838,7 @@ async function lookupBreach(query) {
     // ── App ───────────────────────────────────────────────────────────────────
     function App() {
       const [tsVerified, setTsVerified] = useState(() => sessionStorage.getItem('ts_ok') === '1');
-      const [showAnnouncement, setShowAnnouncement] = useState(() => sessionStorage.getItem('ann_dismissed') !== '1');
+      const [showAnnouncement, setShowAnnouncement] = useState(() => sessionStorage.getItem('ann_dismissed_v2') !== '1');
       const [session, setSession] = useState(loadSession);
       const [discordLoading, setDiscordLoading] = useState(() => window.location.hash.includes('access_token'));
       const [config, setConfig] = useState(loadConfig);
@@ -10323,7 +10323,7 @@ async function lookupBreach(query) {
           {/* Announcement modal */}
           {showAnnouncement && (
             <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.78)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center' }}
-                 onClick={() => { setShowAnnouncement(false); sessionStorage.setItem('ann_dismissed','1'); }}>
+                 onClick={() => { setShowAnnouncement(false); sessionStorage.setItem('ann_dismissed_v2','1'); }}>
               <div onClick={e => e.stopPropagation()} style={{ width:440, maxWidth:'92vw', background:'#0b0b0f', border:'1px solid rgba(255,255,255,0.1)', borderRadius:10, overflow:'hidden', fontFamily:"'JetBrains Mono',monospace", boxShadow:'0 24px 60px rgba(0,0,0,0.7)' }}>
                 {/* Header */}
                 <div style={{ padding:'13px 18px', borderBottom:'1px solid rgba(255,255,255,0.07)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
@@ -10332,34 +10332,34 @@ async function lookupBreach(query) {
                     ANNONCE
                   </span>
                   <span
-                    onClick={() => { setShowAnnouncement(false); sessionStorage.setItem('ann_dismissed','1'); }}
+                    onClick={() => { setShowAnnouncement(false); sessionStorage.setItem('ann_dismissed_v2','1'); }}
                     style={{ cursor:'pointer', color:'rgba(255,255,255,0.4)', fontSize:18, lineHeight:1, userSelect:'none' }}
                   >×</span>
                 </div>
                 {/* Description */}
                 <div style={{ padding:'14px 18px 12px' }}>
                   <div style={{ padding:'10px 14px', border:'1px solid rgba(255,255,255,0.09)', borderRadius:7, fontSize:12, color:'rgba(255,255,255,0.65)', lineHeight:1.55, background:'rgba(255,255,255,0.02)' }}>
-                    BreachVIP est actuellement indisponible.
+                    BreachVIP est de retour en ligne.
                   </div>
                 </div>
                 {/* Content */}
-                <div style={{ margin:'0 18px 14px', border:'1px solid rgba(239,68,68,0.2)', borderRadius:6, background:'rgba(239,68,68,0.04)', padding:'20px 18px', display:'flex', flexDirection:'column', gap:10 }}>
+                <div style={{ margin:'0 18px 14px', border:'1px solid rgba(34,197,94,0.25)', borderRadius:6, background:'rgba(34,197,94,0.05)', padding:'20px 18px', display:'flex', flexDirection:'column', gap:10 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                    <span style={{ width:8, height:8, borderRadius:'50%', background:'#ef4444', display:'inline-block', flexShrink:0, animation:'pulse 1.4s ease-in-out infinite' }} />
-                    <span style={{ fontSize:12, fontWeight:700, color:'#ef4444', letterSpacing:'0.08em' }}>SERVICE DOWN</span>
+                    <span style={{ width:8, height:8, borderRadius:'50%', background:'#22c55e', display:'inline-block', flexShrink:0, animation:'pulse 1.4s ease-in-out infinite' }} />
+                    <span style={{ fontSize:12, fontWeight:700, color:'#22c55e', letterSpacing:'0.08em' }}>SERVICE ONLINE</span>
                   </div>
                   <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)', lineHeight:1.65 }}>
-                    La source d'intelligence passive sur les fuites de données (credentials, IP compromises, hashs) est temporairement hors ligne. Les recherches d'exposition OSINT sont suspendues jusqu'au rétablissement du service.
+                    La source d'intelligence sur les fuites de données est de nouveau opérationnelle. Credentials, IP compromises et hashs sont à nouveau accessibles pour vos recherches OSINT.
                   </div>
-                  <div style={{ fontSize:10, color:'rgba(239,68,68,0.35)', letterSpacing:'0.05em', marginTop:2 }}>
-                    breach.vip · credential intelligence · passive OSINT · unavailable
+                  <div style={{ fontSize:10, color:'rgba(34,197,94,0.4)', letterSpacing:'0.05em', marginTop:2 }}>
+                    breach.vip · credential intelligence · passive OSINT · online
                   </div>
                 </div>
                 {/* Close button */}
                 <div style={{ padding:'0 18px 18px' }}>
                   <button
-                    onClick={() => { setShowAnnouncement(false); sessionStorage.setItem('ann_dismissed','1'); }}
-                    style={{ width:'100%', padding:'13px', background:'#e53e3e', border:'none', borderRadius:5, color:'#fff', fontFamily:"'JetBrains Mono',monospace", fontSize:11, fontWeight:700, letterSpacing:'0.1em', cursor:'pointer' }}
+                    onClick={() => { setShowAnnouncement(false); sessionStorage.setItem('ann_dismissed_v2','1'); }}
+                    style={{ width:'100%', padding:'13px', background:'#16a34a', border:'none', borderRadius:5, color:'#fff', fontFamily:"'JetBrains Mono',monospace", fontSize:11, fontWeight:700, letterSpacing:'0.1em', cursor:'pointer' }}
                   >
                     FERMER
                   </button>
