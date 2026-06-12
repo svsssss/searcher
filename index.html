@@ -311,6 +311,11 @@
     }
     .chip:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-soft); }
 
+    .stype-row { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-top:12px; }
+    .stype-btn { padding:5px 13px; border-radius:7px; border:1px solid var(--rule); background:transparent; color:var(--ink-mute); font-size:12px; font-family:'JetBrains Mono',monospace; cursor:none; transition:border-color 0.15s,color 0.15s,background 0.15s; }
+    .stype-btn:hover { border-color:var(--blue); color:var(--blue); }
+    .stype-btn.st-active { border-color:var(--blue); background:rgba(59,130,246,0.12); color:var(--blue); font-weight:600; }
+
     .settings-btn {
       display: inline-flex;
       align-items: center;
@@ -2594,7 +2599,7 @@
       return { query: q, stealers: data.stealers };
     }
 
-async function lookupBreach(query) {
+async function lookupBreach(query, forcedType = null) {
       const q = query.trim();
       const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(q);
       const isIp       = /^(\d{1,3}\.){3}\d{1,3}$/.test(q);
@@ -2606,9 +2611,10 @@ async function lookupBreach(query) {
       const isName     = !isEmail && !isIp && !isPhone && !isDomain && !isSteamId && !isDiscordId && !isUUID && /\s/.test(q);
       const out = { query: q };
 
-      // Determine breach.vip fields from query type
+      // Determine breach.vip fields from query type (forced type overrides auto-detection)
       let bvipFields;
-      if (isEmail)        bvipFields = ['email'];
+      if (forcedType)     bvipFields = [forcedType];
+      else if (isEmail)        bvipFields = ['email'];
       else if (isPhone)   bvipFields = ['phone'];
       else if (isIp)      bvipFields = ['ip'];
       else if (isDomain)  bvipFields = ['domain'];
@@ -6920,9 +6926,15 @@ async function lookupBreach(query) {
         return history.filter(h => h.q.toLowerCase().includes(q)).slice(0, 6);
       }, [query, history]);
 
-      const submit = e => { e.preventDefault(); if (query.trim()) { onSearch(query.trim()); setFocused(false); } };
-      const chipClick = c => { setQuery(c); onSearch(c); };
-      const pickSuggestion = q => { setQuery(q); onSearch(q); setFocused(false); };
+      const [searchType, setSearchType] = useState(null);
+      const SEARCH_TYPES = [
+        { id:'email', label:'Email' }, { id:'username', label:'Username' }, { id:'name', label:'Nom' },
+        { id:'password', label:'Password' }, { id:'phone', label:'Téléphone' }, { id:'domain', label:'Domaine' },
+        { id:'ip', label:'IP Address' }, { id:'uuid', label:'Minecraft UUID' }, { id:'steamid', label:'Steam ID' }, { id:'discordid', label:'Discord ID' },
+      ];
+      const submit = e => { e.preventDefault(); if (query.trim()) { onSearch(query.trim(), searchType); setFocused(false); } };
+      const chipClick = c => { setQuery(c); onSearch(c, null); };
+      const pickSuggestion = q => { setQuery(q); onSearch(q, null); setFocused(false); };
       const clearHist = () => { clearHistory(); setHistory([]); };
       const showSuggestions = focused && suggestions.length > 0;
 
@@ -7017,6 +7029,15 @@ async function lookupBreach(query) {
             <div className="meta-row">
               {CHIPS.map(c => (
                 <span key={c} className="chip" onClick={() => chipClick(c)}>{c}</span>
+              ))}
+            </div>
+
+            <div className="stype-row">
+              {SEARCH_TYPES.map(t => (
+                <button key={t.id} className={`stype-btn${searchType === t.id ? ' st-active' : ''}`}
+                  onClick={() => setSearchType(prev => prev === t.id ? null : t.id)}>
+                  {t.label}
+                </button>
               ))}
             </div>
 
@@ -10042,7 +10063,7 @@ async function lookupBreach(query) {
         setTimeout(() => showToast(`+${DAILY_BONUS_AMOUNT} crédits — Bonus quotidien !`), 900);
       }, [session]);
 
-      const handleSearch = useCallback(async q => {
+      const handleSearch = useCallback(async (q, forcedType = null) => {
         const cfg = configRef.current;
 
         /* Type detection */
@@ -10101,6 +10122,7 @@ async function lookupBreach(query) {
         setSteamResult(null);
         setMcResult(null);
 
+        let breachQueued = false;
         const all = [], errs = [];
         const hasExtraSources = cfg.googleApiKey || cfg.customApis.length > 0;
 
@@ -10108,30 +10130,26 @@ async function lookupBreach(query) {
           addToHistory(q, 'phone');
           setPhoneResult(validatePhone(q));
           addStat('phone');
-          setBreachResult({ loading: true, query: q });
-          lookupBreach(q).then(data => setBreachResult(data)).catch(e => setBreachResult({ query: q, error: e.message }));
+          if (!breachQueued) { breachQueued = true; setBreachResult({ loading: true, query: q }); lookupBreach(q, forcedType).then(data => setBreachResult(data)).catch(e => setBreachResult({ query: q, error: e.message })); }
         }
 
         if (isPerson) {
           addToHistory(q, 'person');
           setPersonResult(q);
           addStat('person');
-          setBreachResult({ loading: true, query: q });
-          lookupBreach(q).then(data => setBreachResult(data)).catch(e => setBreachResult({ query: q, error: e.message }));
+          if (!breachQueued) { breachQueued = true; setBreachResult({ loading: true, query: q }); lookupBreach(q, forcedType).then(data => setBreachResult(data)).catch(e => setBreachResult({ query: q, error: e.message })); }
         }
 
         if (isDiscordID) {
           addToHistory(q, 'discord'); addStat('discord');
-          setBreachResult({ loading: true, query: q });
-          lookupBreach(q).then(data => setBreachResult(data)).catch(e => setBreachResult({ query: q, error: e.message }));
+          if (!breachQueued) { breachQueued = true; setBreachResult({ loading: true, query: q }); lookupBreach(q, forcedType).then(data => setBreachResult(data)).catch(e => setBreachResult({ query: q, error: e.message })); }
           setLoading(false);
           return;
         }
 
         if (isSteamID) {
           addToHistory(q, 'steam'); addStat('steam');
-          setBreachResult({ loading: true, query: q });
-          lookupBreach(q).then(data => setBreachResult(data)).catch(e => setBreachResult({ query: q, error: e.message }));
+          if (!breachQueued) { breachQueued = true; setBreachResult({ loading: true, query: q }); lookupBreach(q, forcedType).then(data => setBreachResult(data)).catch(e => setBreachResult({ query: q, error: e.message })); }
           setSteamResult({ loading: true, query: q });
           lookupSteam(q).then(data => setSteamResult(data)).catch(e => setSteamResult({ query: q, error: e.message }));
           setLoading(false);
@@ -10145,8 +10163,7 @@ async function lookupBreach(query) {
 
         if (isUUID) {
           addToHistory(q, 'uuid'); addStat('uuid');
-          setBreachResult({ loading: true, query: q });
-          lookupBreach(q).then(data => setBreachResult(data)).catch(e => setBreachResult({ query: q, error: e.message }));
+          if (!breachQueued) { breachQueued = true; setBreachResult({ loading: true, query: q }); lookupBreach(q, forcedType).then(data => setBreachResult(data)).catch(e => setBreachResult({ query: q, error: e.message })); }
           setLoading(false);
           return;
         }
@@ -10154,10 +10171,7 @@ async function lookupBreach(query) {
         if (isEmail) {
           addToHistory(q, 'email'); addStat('email');
           setEmailResult(q);
-          setBreachResult({ loading: true, query: q });
-          lookupBreach(q)
-            .then(data => setBreachResult(data))
-            .catch(e => setBreachResult({ query: q, error: e.message }));
+          if (!breachQueued) { breachQueued = true; setBreachResult({ loading: true, query: q }); lookupBreach(q, forcedType).then(data => setBreachResult(data)).catch(e => setBreachResult({ query: q, error: e.message })); }
           setHudsonResult({ loading: true, query: q });
           lookupHudson(q)
             .then(data => setHudsonResult(data))
@@ -10186,10 +10200,7 @@ async function lookupBreach(query) {
           addToHistory(q, 'username'); addStat('username');
           const uname = q.trim().slice(1);
           setUsernameResult(uname);
-          setBreachResult({ loading: true, query: uname });
-          lookupBreach(uname)
-            .then(data => setBreachResult(data))
-            .catch(e => setBreachResult({ query: uname, error: e.message }));
+          if (!breachQueued) { breachQueued = true; setBreachResult({ loading: true, query: uname }); lookupBreach(uname, forcedType).then(data => setBreachResult(data)).catch(e => setBreachResult({ query: uname, error: e.message })); }
           setHudsonResult({ loading: true, query: uname });
           lookupHudson(uname)
             .then(data => setHudsonResult(data))
@@ -10220,10 +10231,7 @@ async function lookupBreach(query) {
               .then(data => setShodanResult({ ip: q, data }))
               .catch(e => setShodanResult({ ip: q, error: e.message }));
           }
-          setBreachResult({ loading: true, query: q });
-          lookupBreach(q)
-            .then(data => setBreachResult(data))
-            .catch(e => setBreachResult({ query: q, error: e.message }));
+          if (!breachQueued) { breachQueued = true; setBreachResult({ loading: true, query: q }); lookupBreach(q, forcedType).then(data => setBreachResult(data)).catch(e => setBreachResult({ query: q, error: e.message })); }
           setLoading(false);
           return;
         }
@@ -10234,10 +10242,16 @@ async function lookupBreach(query) {
           lookupDomain(q)
             .then(data => setWhoisResult({ domain: q, data }))
             .catch(e => setWhoisResult({ domain: q, error: e.message }));
+          if (!breachQueued) { breachQueued = true; setBreachResult({ loading: true, query: q }); lookupBreach(q, forcedType).then(data => setBreachResult(data)).catch(e => setBreachResult({ query: q, error: e.message })); }
+          setLoading(false);
+          return;
+        }
+
+        if (forcedType && !breachQueued) {
+          breachQueued = true;
+          addToHistory(q, forcedType); addStat(forcedType);
           setBreachResult({ loading: true, query: q });
-          lookupBreach(q)
-            .then(data => setBreachResult(data))
-            .catch(e => setBreachResult({ query: q, error: e.message }));
+          lookupBreach(q, forcedType).then(data => setBreachResult(data)).catch(e => setBreachResult({ query: q, error: e.message }));
           setLoading(false);
           return;
         }
