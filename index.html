@@ -2335,6 +2335,7 @@
       customApis: [],
       followSpeed: 0.12,
       shodanKey: 'yDYVZESGL41gWxqEdSujNxn8caEeYmEI',
+      brixhubKey: 'brix_MLToXw48QxlDW-51IjubUJN5GvY0G7TuDjADFbos96D6dDfG',
       showMagnifier: true,
       showWordField: false,
     };
@@ -2597,6 +2598,44 @@
       const data = await res.json();
       if (!data.stealers || data.stealers.length === 0) throw new Error('Aucun log infostealer trouvé.');
       return { query: q, stealers: data.stealers };
+    }
+
+    async function lookupBrixhub(query, type, key) {
+      const q = query.trim();
+      const hdrs = { 'X-API-Key': key, 'User-Agent': 'Searcher-OSINT/1.0', 'Content-Type': 'application/json' };
+      const BASE = 'https://brixhub.net/api/v1';
+      let url, body = null, method = 'GET';
+
+      if (type === 'email') {
+        url = `${BASE}/lookup/email/${encodeURIComponent(q)}`;
+      } else if (type === 'phone') {
+        url = `${BASE}/lookup/phone/${encodeURIComponent(q)}`;
+      } else {
+        method = 'POST'; url = `${BASE}/search`;
+        if (type === 'person') {
+          const parts = q.trim().split(/\s+/);
+          body = parts.length >= 2
+            ? { prenom: parts[0], nom_famille: parts.slice(1).join(' '), flexible: true }
+            : { nom_affichage: q, flexible: true };
+        } else if (type === 'username') {
+          body = { nom_utilisateur: q };
+        } else if (type === 'discord') {
+          body = { discord_id: q };
+        } else if (type === 'steam') {
+          body = { steam_id: q };
+        } else {
+          body = { nom_affichage: q, flexible: true };
+        }
+      }
+
+      const opts = { method, headers: hdrs };
+      if (body) opts.body = JSON.stringify(body);
+      const r = await fetch(url, opts);
+      if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.message || `Erreur ${r.status}`); }
+      const d = await r.json();
+      const results = d.data?.results || (Array.isArray(d.data) ? d.data : []);
+      if (!results.length) throw new Error('Aucun résultat BrixHub.');
+      return { query: q, type, results, meta: d.meta || {} };
     }
 
 async function lookupBreach(query, forcedType = null) {
@@ -5664,8 +5703,83 @@ async function lookupBreach(query, forcedType = null) {
       );
     }
 
+    // ── BrixHub Result ────────────────────────────────────────────────────────
+    function BrixhubResult({ data }) {
+      const [open, setOpen] = useState(true);
+      if (!data) return null;
+      const COL = '59,130,246';
+      const borderBase = `rgba(${COL},0.22)`;
+      const hdrBg = `rgba(${COL},0.06)`;
+      const hdrColor = `rgba(${COL},0.85)`;
+      const rowBorder = `rgba(${COL},0.09)`;
+
+      if (data.loading) return (
+        <div style={{ border:`1px solid ${borderBase}`, marginBottom:12, fontFamily:"'JetBrains Mono',monospace" }}>
+          <div style={{ padding:'7px 14px', background:hdrBg, fontSize:11, color:`rgba(${COL},0.45)`, letterSpacing:'0.08em' }}>BRIXHUB · CHARGEMENT…</div>
+        </div>
+      );
+      if (data.error) return (
+        <div style={{ border:`1px solid rgba(${COL},0.12)`, marginBottom:12, fontFamily:"'JetBrains Mono',monospace" }}>
+          <div style={{ padding:'7px 14px', background:hdrBg, fontSize:11, color:`rgba(${COL},0.4)`, letterSpacing:'0.08em' }}>BRIXHUB · {data.error}</div>
+        </div>
+      );
+
+      const { results, meta } = data;
+      const total = meta.total || results.length;
+      return (
+        <div style={{ border:`1px solid ${borderBase}`, marginBottom:12, fontFamily:"'JetBrains Mono',monospace" }}>
+          <div onClick={() => setOpen(p => !p)} style={{ padding:'7px 14px', borderBottom: open ? `1px solid ${rowBorder}` : 'none', background:hdrBg, fontSize:11, color:hdrColor, letterSpacing:'0.08em', display:'flex', justifyContent:'space-between', cursor:'pointer', userSelect:'none' }}>
+            <span>BRIXHUB · {total} PROFIL{total > 1 ? 'S' : ''}{meta.took_ms ? ` · ${meta.took_ms}ms` : ''}</span>
+            <span style={{ fontSize:9 }}>{open ? '▲' : '▼'}</span>
+          </div>
+          {open && results.map((r, i) => {
+            const conf = r._confidence;
+            const confColor = conf >= 80 ? '#4ade80' : conf >= 50 ? '#fbbf24' : '#f87171';
+            const confBg = conf >= 80 ? 'rgba(34,197,94,0.1)' : conf >= 50 ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)';
+            const confBorder = conf >= 80 ? 'rgba(34,197,94,0.25)' : conf >= 50 ? 'rgba(245,158,11,0.25)' : 'rgba(239,68,68,0.25)';
+            const nom = [r.prenom, r.nom_famille].filter(Boolean).join(' ') || r.nom_affichage || r.nom_utilisateur;
+            const fields = [
+              ['Nom', nom],
+              ['Email', r.email],
+              ['Tél', r.telephone],
+              ['Ville', r.ville ? `${r.ville}${r.code_postal ? ` (${r.code_postal})` : ''}` : null],
+              ['Adresse', r.adresse],
+              ['Pays', r.pays],
+              ['Naissance', r.date_naissance || (r.annee_naissance ? String(r.annee_naissance) : null)],
+              ['Username', r.nom_utilisateur],
+              ['Discord', r.discord_id],
+              ['Steam', r.steam_id],
+              ['FiveM', r.fivem_license || r.fivem_id],
+              ['Société', r.societe],
+              ['Fonction', r.fonction],
+            ].filter(([, v]) => v);
+            return (
+              <div key={i} style={{ padding:'10px 14px', borderBottom: i < results.length - 1 ? `1px solid ${rowBorder}` : 'none' }}>
+                {conf != null && (
+                  <div style={{ marginBottom:7, display:'flex', flexWrap:'wrap', gap:5, alignItems:'center' }}>
+                    <span style={{ fontSize:10, padding:'2px 8px', background:confBg, color:confColor, border:`1px solid ${confBorder}`, letterSpacing:'0.05em' }}>SCORE {conf}%</span>
+                    {(r._sources || []).map((s, j) => (
+                      <span key={j} style={{ fontSize:10, padding:'2px 8px', background:`rgba(${COL},0.07)`, color:`rgba(${COL},0.6)`, border:`1px solid rgba(${COL},0.18)`, letterSpacing:'0.04em' }}>{s}</span>
+                    ))}
+                  </div>
+                )}
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(210px,1fr))', gap:'4px 18px' }}>
+                  {fields.map(([label, value]) => (
+                    <div key={label} style={{ fontSize:11, display:'flex', gap:6 }}>
+                      <span style={{ color:'var(--ink-mute)', minWidth:62, flexShrink:0 }}>{label}</span>
+                      <span style={{ color:'var(--ink)', wordBreak:'break-all' }}>{value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
     // ── Results Page ──────────────────────────────────────────────────────────
-    function ResultsPage({ query, results, loading, error, phoneResult, ipResult, whoisResult, shodanResult, personResult, emailResult, imageResult, decoderResult, usernameResult, tiktokResult, breachResult, hudsonResult, steamResult, mcResult, config, onSearch, onTheme, onPricing, onPatchnote, onRedeem, onLeaderboard, onMiniGame, miniGameAvailable, credits, onBack, followSpeed, session, onLogout, onProfile, onAdmin, onBulk, onStaff }) {
+    function ResultsPage({ query, results, loading, error, phoneResult, ipResult, whoisResult, shodanResult, personResult, emailResult, imageResult, decoderResult, usernameResult, tiktokResult, breachResult, hudsonResult, brixhubResult, steamResult, mcResult, config, onSearch, onTheme, onPricing, onPatchnote, onRedeem, onLeaderboard, onMiniGame, miniGameAvailable, credits, onBack, followSpeed, session, onLogout, onProfile, onAdmin, onBulk, onStaff }) {
       const [input, setInput] = useState(query);
       const [onlineCount, setOnlineCount] = useState(() => {
         const cutoff = Date.now() - 3 * 60 * 1000;
@@ -5772,6 +5886,7 @@ async function lookupBreach(query, forcedType = null) {
               <span className="builtin-chip" style={{ borderColor:'rgba(105,201,208,0.4)', color:'#69C9D0', background:'rgba(105,201,208,0.08)' }}><span className="dot-green" style={{ background:'#69C9D0' }} />TikTok OSINT</span>
               {config.googleApiKey && <span className="builtin-chip"><span className="dot-green" />Google</span>}
               <span className="builtin-chip" style={{ borderColor:'#f97316', color:'#ea580c', background:'rgba(249,115,22,0.08)' }}><span className="dot-green" style={{ background:'#f97316' }} />Shodan</span>
+              {config.brixhubKey && <span className="builtin-chip" style={{ borderColor:'rgba(59,130,246,0.4)', color:'#60a5fa', background:'rgba(59,130,246,0.08)' }}><span className="dot-green" style={{ background:'#3b82f6' }} />BrixHub</span>}
               {config.customApis.map(a => <span key={a.name} className="builtin-chip"><span className="dot-green" />{a.name}</span>)}
             </div>
 
@@ -5784,6 +5899,7 @@ async function lookupBreach(query, forcedType = null) {
             {emailResult && <EmailCard email={emailResult} />}
             {emailResult && <SocialCheckCard email={emailResult} />}
             {hudsonResult && <HudsonResult data={hudsonResult} />}
+            {brixhubResult && <BrixhubResult data={brixhubResult} />}
             {imageResult && <ImageSearchCard url={imageResult} />}
             {personResult && <PersonCard name={personResult} />}
             {phoneResult && <PhoneCard phone={phoneResult} />}
@@ -9878,6 +9994,7 @@ async function lookupBreach(query, forcedType = null) {
       const [tiktokResult, setTiktokResult]     = useState(null);
       const [breachResult, setBreachResult]     = useState(null);
       const [hudsonResult, setHudsonResult]     = useState(null);
+      const [brixhubResult, setBrixhubResult]   = useState(null);
       const [steamResult, setSteamResult]       = useState(null);
       const [mcResult, setMcResult]             = useState(null);
       const [loading, setLoading] = useState(false);
@@ -10119,6 +10236,7 @@ async function lookupBreach(query, forcedType = null) {
         setTiktokResult(null);
         setBreachResult(null);
         setHudsonResult(null);
+        setBrixhubResult(null);
         setSteamResult(null);
         setMcResult(null);
 
@@ -10131,6 +10249,7 @@ async function lookupBreach(query, forcedType = null) {
           setPhoneResult(validatePhone(q));
           addStat('phone');
           if (!breachQueued) { breachQueued = true; setBreachResult({ loading: true, query: q }); lookupBreach(q, forcedType).then(data => setBreachResult(data)).catch(e => setBreachResult({ query: q, error: e.message })); }
+          if (cfg.brixhubKey) { setBrixhubResult({ loading: true, query: q }); lookupBrixhub(q, 'phone', cfg.brixhubKey).then(data => setBrixhubResult(data)).catch(e => setBrixhubResult({ query: q, error: e.message })); }
         }
 
         if (isPerson) {
@@ -10138,11 +10257,13 @@ async function lookupBreach(query, forcedType = null) {
           setPersonResult(q);
           addStat('person');
           if (!breachQueued) { breachQueued = true; setBreachResult({ loading: true, query: q }); lookupBreach(q, forcedType).then(data => setBreachResult(data)).catch(e => setBreachResult({ query: q, error: e.message })); }
+          if (cfg.brixhubKey) { setBrixhubResult({ loading: true, query: q }); lookupBrixhub(q, 'person', cfg.brixhubKey).then(data => setBrixhubResult(data)).catch(e => setBrixhubResult({ query: q, error: e.message })); }
         }
 
         if (isDiscordID) {
           addToHistory(q, 'discord'); addStat('discord');
           if (!breachQueued) { breachQueued = true; setBreachResult({ loading: true, query: q }); lookupBreach(q, forcedType).then(data => setBreachResult(data)).catch(e => setBreachResult({ query: q, error: e.message })); }
+          if (cfg.brixhubKey) { setBrixhubResult({ loading: true, query: q }); lookupBrixhub(q, 'discord', cfg.brixhubKey).then(data => setBrixhubResult(data)).catch(e => setBrixhubResult({ query: q, error: e.message })); }
           setLoading(false);
           return;
         }
@@ -10150,6 +10271,7 @@ async function lookupBreach(query, forcedType = null) {
         if (isSteamID) {
           addToHistory(q, 'steam'); addStat('steam');
           if (!breachQueued) { breachQueued = true; setBreachResult({ loading: true, query: q }); lookupBreach(q, forcedType).then(data => setBreachResult(data)).catch(e => setBreachResult({ query: q, error: e.message })); }
+          if (cfg.brixhubKey) { setBrixhubResult({ loading: true, query: q }); lookupBrixhub(q, 'steam', cfg.brixhubKey).then(data => setBrixhubResult(data)).catch(e => setBrixhubResult({ query: q, error: e.message })); }
           setSteamResult({ loading: true, query: q });
           lookupSteam(q).then(data => setSteamResult(data)).catch(e => setSteamResult({ query: q, error: e.message }));
           setLoading(false);
@@ -10176,6 +10298,7 @@ async function lookupBreach(query, forcedType = null) {
           lookupHudson(q)
             .then(data => setHudsonResult(data))
             .catch(e => setHudsonResult({ query: q, error: e.message }));
+          if (cfg.brixhubKey) { setBrixhubResult({ loading: true, query: q }); lookupBrixhub(q, 'email', cfg.brixhubKey).then(data => setBrixhubResult(data)).catch(e => setBrixhubResult({ query: q, error: e.message })); }
           setLoading(false);
           return;
         }
@@ -10202,6 +10325,7 @@ async function lookupBreach(query, forcedType = null) {
           setUsernameResult(uname);
           if (!breachQueued) { breachQueued = true; setBreachResult({ loading: true, query: uname }); lookupBreach(uname, forcedType).then(data => setBreachResult(data)).catch(e => setBreachResult({ query: uname, error: e.message })); }
           setHudsonResult({ loading: true, query: uname });
+          if (cfg.brixhubKey) { setBrixhubResult({ loading: true, query: uname }); lookupBrixhub(uname, 'username', cfg.brixhubKey).then(data => setBrixhubResult(data)).catch(e => setBrixhubResult({ query: uname, error: e.message })); }
           lookupHudson(uname)
             .then(data => setHudsonResult(data))
             .catch(e => setHudsonResult({ query: uname, error: e.message }));
@@ -10409,7 +10533,7 @@ async function lookupBreach(query, forcedType = null) {
                       ? <BulkEmailPage onBack={() => setPage('search')} showMagnifier={config.showMagnifier} />
                       : page === 'search'
                         ? <SearchPage onSearch={handleSearch} onTheme={() => setShowTheme(true)} onPricing={() => setShowPricing(true)} onProfile={() => setPage('dashboard')} onRedeem={() => setShowRedeem(true)} onPatchnote={() => setPage('patchnote')} onLeaderboard={() => setPage('leaderboard')} onMiniGame={() => setShowMiniGame(true)} miniGameAvailable={miniGameAvailable} credits={credits} followSpeed={config.followSpeed} showMagnifier={config.showMagnifier} session={session} onLogout={handleLogout} onAdmin={() => setPage('admin')} onBulk={() => setPage('bulk')} onStaff={() => setPage('staff')} />
-                        : <ResultsPage key={query} query={query} results={results} phoneResult={phoneResult} ipResult={ipResult} whoisResult={whoisResult} shodanResult={shodanResult} personResult={personResult} emailResult={emailResult} imageResult={imageResult} decoderResult={decoderResult} usernameResult={usernameResult} tiktokResult={tiktokResult} breachResult={breachResult} hudsonResult={hudsonResult} steamResult={steamResult} mcResult={mcResult} loading={loading} error={error} config={config}
+                        : <ResultsPage key={query} query={query} results={results} phoneResult={phoneResult} ipResult={ipResult} whoisResult={whoisResult} shodanResult={shodanResult} personResult={personResult} emailResult={emailResult} imageResult={imageResult} decoderResult={decoderResult} usernameResult={usernameResult} tiktokResult={tiktokResult} breachResult={breachResult} hudsonResult={hudsonResult} brixhubResult={brixhubResult} steamResult={steamResult} mcResult={mcResult} loading={loading} error={error} config={config}
                                        onSearch={handleSearch} onTheme={() => setShowTheme(true)} onPricing={() => setShowPricing(true)} onProfile={() => setPage('dashboard')} onRedeem={() => setShowRedeem(true)} onPatchnote={() => setPage('patchnote')} onLeaderboard={() => setPage('leaderboard')} onMiniGame={() => setShowMiniGame(true)} miniGameAvailable={miniGameAvailable} credits={credits}
                                        onBack={() => setPage('search')} followSpeed={config.followSpeed} session={session} onLogout={handleLogout} onAdmin={() => setPage('admin')} onBulk={() => setPage('bulk')} onStaff={() => setPage('staff')} />
           }
