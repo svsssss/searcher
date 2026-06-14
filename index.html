@@ -1396,46 +1396,87 @@
     @keyframes drift-2 { from { translate: 0 0 } to { translate: 6px 8px } }
     @keyframes drift-3 { from { translate: 0 0 } to { translate: -7px -9px } }
 
+    /* Mobile nav bar (hidden on desktop) */
+    .mobile-nav { display: none; }
+
     @media (max-width: 640px) {
-      /* hide desktop-only decorations */
-      .corner.tr, .corner.bl { display: none; }
+      :root { --sb-width: 0px !important; }
+
+      /* hide desktop-only elements */
       .cursor-dot, .cursor-ring { display: none !important; }
       .magnifier { display: none !important; }
+      .sidebar { display: none !important; }
+      .corner.tr, .corner.bl { display: none; }
+      html, body { cursor: auto !important; }
+      input, button, a, select, textarea { cursor: pointer !important; }
 
-      /* top-left logo closer to edge */
+      /* top-left logo */
       .corner.tl { top: 14px; left: 14px; }
 
-      /* bottom-right corner → full-width scrollable nav bar */
-      .corner.br {
+      /* ── Mobile bottom nav ── */
+      .mobile-nav {
+        display: flex;
+        position: fixed;
         bottom: 0; left: 0; right: 0;
-        flex-wrap: nowrap;
-        gap: 6px;
-        padding: 10px 14px;
-        padding-bottom: calc(10px + env(safe-area-inset-bottom));
+        z-index: 200;
         background: var(--bg);
         border-top: 1px solid var(--rule);
-        box-shadow: 0 -4px 16px rgba(0,0,0,0.06);
-        overflow-x: auto;
-        justify-content: flex-start;
-        scrollbar-width: none;
-        z-index: 20;
+        padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+        backdrop-filter: blur(16px);
+        box-shadow: 0 -4px 24px rgba(0,0,0,0.07);
       }
-      .corner.br::-webkit-scrollbar { display: none; }
+      .mnav-btn {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 3px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 5px 0;
+        color: var(--ink-mute);
+        font-family: 'Geist', sans-serif;
+        font-size: 10px;
+        -webkit-tap-highlight-color: transparent;
+        transition: color 0.14s;
+        border-radius: 8px;
+      }
+      .mnav-btn.mnav-active { color: var(--blue); }
+      .mnav-btn.mnav-active svg { stroke: var(--blue); }
+      .mnav-btn svg { width: 20px; height: 20px; stroke: currentColor; }
 
-      /* home stage: extra bottom room for nav bar + less top */
-      .stage { padding: 60px 16px 100px; gap: 26px; }
-      .tag { font-size: 13px; margin-top: 12px; }
+      /* Home/Search stage */
+      .stage { padding: 28px 16px 96px !important; gap: 22px; margin-left: 0 !important; }
+      .wordmark { font-size: clamp(44px, 15vw, 72px); }
+      .tag { font-size: 13px; margin-top: 10px; }
+      .search-wrap { width: 100%; }
+      .meta-row { gap: 6px; }
+      .stype-row { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; padding-bottom: 2px; scrollbar-width: none; }
+      .stype-row::-webkit-scrollbar { display: none; }
+      .stype-btn { white-space: nowrap; flex-shrink: 0; font-size: 11px; padding: 4px 10px; }
 
-      /* results page */
+      /* Results page */
+      .results-root { margin-left: 0 !important; }
       .results-topbar { padding: 10px 12px; }
-      .results-body { padding: 18px 14px 30px; }
+      .results-body { padding: 16px 12px 96px; }
+      .builtin-banner { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+      .builtin-banner::-webkit-scrollbar { display: none; }
 
-      /* dashboard */
-      .dashboard-body { padding: 56px 14px 24px; }
+      /* Modals */
+      .modal { width: calc(100% - 24px) !important; max-width: 100% !important; max-height: 87vh !important; border-radius: 16px !important; }
+      .pricing-modal { width: calc(100% - 24px) !important; max-height: 87vh !important; border-radius: 16px !important; }
+
+      /* Auth */
+      .auth-left { display: none !important; }
+      .auth-right { width: 100% !important; padding: 32px 20px !important; }
+
+      /* Dashboard */
+      .dashboard-body { padding: 56px 14px 96px; }
       .api-form-row { grid-template-columns: 1fr; }
 
-      /* volume control: lift above bottom bar */
-      .vol-ctrl { bottom: 72px; left: 14px; min-width: 148px; padding: 8px 12px; }
+      /* Volume control: lift above bottom bar */
+      .vol-ctrl { bottom: 80px; left: 14px; }
     }
     /* ── Auth page ── */
     .auth-overlay {
@@ -5953,8 +5994,37 @@ async function lookupBreach(query, forcedType = null) {
             )}
           </div>
 
+          <MobileNav activePage="results" onHome={onBack} onLeaderboard={onLeaderboard} onProfile={onProfile} onPatchnote={onPatchnote} onTheme={onTheme} />
           <Cursor />
         </div>
+      );
+    }
+
+    // ── Mobile Bottom Nav ─────────────────────────────────────────────────────
+    function MobileNav({ activePage, onHome, onLeaderboard, onProfile, onPatchnote, onTheme }) {
+      return (
+        <nav className="mobile-nav">
+          <button className={`mnav-btn${activePage==='search'?' mnav-active':''}`} onClick={onHome}>
+            <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.8" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <span>Accueil</span>
+          </button>
+          <button className="mnav-btn" onClick={onLeaderboard}>
+            <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="18" y="3" width="4" height="18" rx="1"/><rect x="10" y="8" width="4" height="13" rx="1"/><rect x="2" y="13" width="4" height="8" rx="1"/></svg>
+            <span>Classement</span>
+          </button>
+          <button className="mnav-btn" onClick={onProfile}>
+            <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            <span>Profil</span>
+          </button>
+          <button className="mnav-btn" onClick={onPatchnote}>
+            <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.8" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            <span>Notes</span>
+          </button>
+          <button className="mnav-btn" onClick={onTheme}>
+            <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+            <span>Thème</span>
+          </button>
+        </nav>
       );
     }
 
@@ -7159,6 +7229,7 @@ async function lookupBreach(query, forcedType = null) {
 
           </div>
 
+          <MobileNav activePage="search" onHome={() => {}} onLeaderboard={onLeaderboard} onProfile={onProfile} onPatchnote={onPatchnote} onTheme={onTheme} />
           <Cursor />
         </>
       );
