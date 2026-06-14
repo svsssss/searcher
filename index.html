@@ -2583,6 +2583,15 @@
       return /i\.imgur\.com|i\.redd\.it|cdn\.discordapp\.com|pbs\.twimg\.com|images\.unsplash\.com|media\.giphy\.com/.test(s);
     }
 
+    function looksLikePlate(q) {
+      const s = q.trim().toUpperCase();
+      return /^[A-Z]{2}-\d{3}-[A-Z]{2}$/.test(s) || /^\d{1,4}\s?[A-Z]{2,3}\s?\d{2,3}$/.test(s);
+    }
+
+    function looksLikeAddress(q) {
+      return /^\d+[,\s]+(rue|avenue|av\.?|bd\.?|boulevard|allée|chemin|impasse|place|cours|voie|route|rte|square|résidence|res\.?|cité)\s+/i.test(q.trim());
+    }
+
     function looksLikeEncoded(q) {
       const s = q.trim();
       if (s.length < 4) return false;
@@ -2664,6 +2673,10 @@
           body = { discord_id: q };
         } else if (type === 'steam') {
           body = { steam_id: q };
+        } else if (type === 'plate') {
+          body = { immatriculation: q };
+        } else if (type === 'address') {
+          body = { adresse: q, flexible: true };
         } else {
           body = { nom_affichage: q, flexible: true };
         }
@@ -10280,7 +10293,9 @@ async function lookupBreach(query, forcedType = null) {
         const isEncoded   = !isIP && !isTiktok && !isImageUrl && !isUsername && !isSteamID && !isDiscordID && !isUUID && looksLikeEncoded(q);
         const isDomain    = !isIP && !isTiktok && !isImageUrl && !isUsername && !isSteamID && !isDiscordID && !isUUID && !isEncoded && looksLikeDomain(q);
         const isEmail     = !isIP && !isTiktok && !isImageUrl && !isUsername && !isSteamID && !isDiscordID && !isUUID && !isEncoded && !isDomain && looksLikeEmail(q);
-        const isPerson    = !isIP && !isTiktok && !isImageUrl && !isUsername && !isSteamID && !isDiscordID && !isUUID && !isEncoded && !isDomain && !isEmail && !looksLikePhone(q) && looksLikePerson(q);
+        const isPlate     = !isIP && !isTiktok && !isImageUrl && !isUsername && !isSteamID && !isDiscordID && !isUUID && !isEncoded && !isDomain && !isEmail && looksLikePlate(q);
+        const isAddress   = !isIP && !isTiktok && !isImageUrl && !isUsername && !isSteamID && !isDiscordID && !isUUID && !isEncoded && !isDomain && !isEmail && !isPlate && looksLikeAddress(q);
+        const isPerson    = !isIP && !isTiktok && !isImageUrl && !isUsername && !isSteamID && !isDiscordID && !isUUID && !isEncoded && !isDomain && !isEmail && !isPlate && !isAddress && !looksLikePhone(q) && looksLikePerson(q);
 
         /* Premium gate — block before deducting credits */
         if (!isPremium(sessionRef.current) && (isTiktok || isUsername || isPerson || isEncoded || isDomain)) {
@@ -10453,6 +10468,22 @@ async function lookupBreach(query, forcedType = null) {
             .then(data => setWhoisResult({ domain: q, data }))
             .catch(e => setWhoisResult({ domain: q, error: e.message }));
           if (!breachQueued) { breachQueued = true; setBreachResult({ loading: true, query: q }); lookupBreach(q, forcedType).then(data => setBreachResult(data)).catch(e => setBreachResult({ query: q, error: e.message })); }
+          setLoading(false);
+          return;
+        }
+
+        if (isPlate && cfg.brixhubKey) {
+          addToHistory(q, 'plate'); addStat('plate');
+          setBrixhubResult({ loading: true, query: q });
+          lookupBrixhub(q, 'plate', cfg.brixhubKey).then(data => setBrixhubResult(data)).catch(e => setBrixhubResult({ query: q, error: e.message }));
+          setLoading(false);
+          return;
+        }
+
+        if (isAddress && cfg.brixhubKey) {
+          addToHistory(q, 'address'); addStat('address');
+          setBrixhubResult({ loading: true, query: q });
+          lookupBrixhub(q, 'address', cfg.brixhubKey).then(data => setBrixhubResult(data)).catch(e => setBrixhubResult({ query: q, error: e.message }));
           setLoading(false);
           return;
         }
