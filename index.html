@@ -2602,8 +2602,8 @@
 
     async function lookupBrixhub(query, type, key) {
       const q = query.trim();
-      const hdrs = { 'X-API-Key': key, 'User-Agent': 'Searcher-OSINT/1.0', 'Content-Type': 'application/json' };
-      const BASE = 'https://brixhub.net/api/v1';
+      const hdrs = { 'Content-Type': 'application/json' };
+      const BASE = 'https://brixhub-proxy.botar7ea.workers.dev';
       let url, body = null, method = 'GET';
 
       if (type === 'email') {
