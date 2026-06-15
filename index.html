@@ -3362,7 +3362,7 @@ async function lookupBreach(query, forcedType = null) {
 
     async function pushPremiumList(list) {
       localStorage.setItem(PREMIUM_LIST_KEY, JSON.stringify(list));
-      try { await FB_ROOT.child('premiumUsers').set(list); } catch {}
+      await FB_ROOT.child('premiumUsers').set(list);
     }
 
     async function pushCreditGrant(grant) {
@@ -6235,7 +6235,7 @@ async function lookupBreach(query, forcedType = null) {
         await pushForcedLogouts(updated);
       };
 
-      const add = () => {
+      const add = async () => {
         const name = input.trim();
         if (!name) return;
         if (list.some(u => u.toLowerCase() === name.toLowerCase())) {
@@ -6245,16 +6245,22 @@ async function lookupBreach(query, forcedType = null) {
         setList(newList);
         onPremiumUpdate(newList);
         setInput('');
-        setMsg({ ok: true, text: `✓ ${name} — Premium actif + 50 cr en route.` });
-        pushPremiumList(newList);
-        pushCreditGrant({ id: 'premium-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name, amount: 50, createdAt: Date.now() });
+        setMsg({ ok: true, text: `⏳ Sync Firebase…` });
+        try {
+          await pushPremiumList(newList);
+          setMsg({ ok: true, text: `✓ ${name} — Premium actif + 50 cr en route.` });
+          pushCreditGrant({ id: 'premium-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name, amount: 50, createdAt: Date.now() });
+        } catch(e) {
+          setMsg({ ok: false, text: `✗ Erreur Firebase : ${e.message}` });
+        }
       };
 
-      const remove = name => {
+      const remove = async name => {
         const newList = list.filter(u => u.toLowerCase() !== name.toLowerCase());
         setList(newList);
         onPremiumUpdate(newList);
-        pushPremiumList(newList);
+        try { await pushPremiumList(newList); }
+        catch(e) { setMsg({ ok:false, text:`✗ Erreur Firebase retrait : ${e.message}` }); }
       };
 
       const inp = { background:'var(--input-bg)', border:'1px solid var(--rule)', color:'var(--ink)', fontFamily:"'JetBrains Mono',monospace", fontSize:12, padding:'9px 12px', outline:'none', width:'100%', boxSizing:'border-box', cursor:'none' };
