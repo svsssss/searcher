@@ -16,6 +16,8 @@
   <script src="https://unpkg.com/libphonenumber-js@1.11.4/bundle/libphonenumber-min.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js" crossorigin="anonymous"></script>
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
   <style>
     :root {
@@ -3137,12 +3139,20 @@ async function lookupBreach(query, forcedType = null) {
     }
     function savePublicProfile(p) { localStorage.setItem(PUBLIC_PROFILE_KEY, JSON.stringify(p)); }
 
-    // ── Leaderboard ───────────────────────────────────────────────────────────
-    const LEADERBOARD_KEY  = 'searcher_leaderboard_v1';
-    const JSONBIN_BIN_ID   = '69fbb961c0954111d8e8a418';
-    const JSONBIN_KEY      = '$2a$10$DWFI3h/UWwAFLSTFsdF/bemmid1iDUbpQvOep325fLa8of..RtdYW';
-    const JSONBIN_URL      = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`;
-    const JSONBIN_HEADERS  = { 'X-Master-Key': JSONBIN_KEY, 'Content-Type': 'application/json' };
+    // ── Firebase ──────────────────────────────────────────────────────────────
+    const LEADERBOARD_KEY = 'searcher_leaderboard_v1';
+    if (!firebase.apps.length) {
+      firebase.initializeApp({
+        apiKey: "AIzaSyCigJbRWnxKORT9rZucXjXSLhOKEW0CAno",
+        authDomain: "searcher-51382.firebaseapp.com",
+        databaseURL: "https://searcher-51382-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "searcher-51382",
+        storageBucket: "searcher-51382.firebasestorage.app",
+        messagingSenderId: "598719383099",
+        appId: "1:598719383099:web:e6e39f1aa7c2e4cc78be1e",
+      });
+    }
+    const FB_ROOT = firebase.database().ref('searcher');
 
     // ── Audit Log ─────────────────────────────────────────────────────────────
     const AUDIT_KEY = 'searcher_audit_v1';
@@ -3154,7 +3164,7 @@ async function lookupBreach(query, forcedType = null) {
     function cacheAuditLog(log) { localStorage.setItem(AUDIT_KEY, JSON.stringify(log)); }
     async function pushAuditLog(log) {
       cacheAuditLog(log);
-      try { await fetch(JSONBIN_URL, { method:'PUT', headers:JSONBIN_HEADERS, body:JSON.stringify(buildRecord({ auditLog: log })) }); } catch {}
+      try { await FB_ROOT.child('auditLog').set(log); } catch {}
     }
     async function addAuditEntry(uid, name, action, detail) {
       const entry = { id: Date.now().toString(36) + Math.random().toString(36).slice(2,5), uid: uid||'?', name: name||'?', action, detail: detail||'', ts: Date.now() };
@@ -3170,7 +3180,7 @@ async function lookupBreach(query, forcedType = null) {
     function cacheForcedLogouts(list) { localStorage.setItem(FORCED_LOGOUTS_KEY, JSON.stringify(list)); }
     async function pushForcedLogouts(list) {
       cacheForcedLogouts(list);
-      try { await fetch(JSONBIN_URL, { method:'PUT', headers:JSONBIN_HEADERS, body:JSON.stringify(buildRecord({ forcedLogouts: list })) }); } catch {}
+      try { await FB_ROOT.child('forcedLogouts').set(list); } catch {}
     }
 
     function loadLeaderboard() {
@@ -3227,12 +3237,11 @@ async function lookupBreach(query, forcedType = null) {
     function cacheBroadcast(m){ localStorage.setItem(BROADCAST_KEY, JSON.stringify(m)); }
     async function pushBlacklist(list) {
       cacheBlacklist(list);
-      const r = await fetch(JSONBIN_URL, { method:'PUT', headers:JSONBIN_HEADERS, body:JSON.stringify(buildRecord({ blacklist: list })) });
-      if (!r.ok) throw new Error(`JSONBin ${r.status}`);
+      await FB_ROOT.child('blacklist').set(list);
     }
     async function pushBroadcast(msg) {
       cacheBroadcast(msg);
-      try { await fetch(JSONBIN_URL, { method:'PUT', headers:JSONBIN_HEADERS, body:JSON.stringify(buildRecord({ broadcast: msg })) }); } catch {}
+      try { await FB_ROOT.child('broadcast').set(msg); } catch {}
     }
 
     const STAFF_LIST_KEY = 'searcher_stafflist_v1';
@@ -3248,11 +3257,11 @@ async function lookupBreach(query, forcedType = null) {
     }
     async function pushStaffList(list) {
       cacheStaffList(list);
-      try { await fetch(JSONBIN_URL, { method:'PUT', headers:JSONBIN_HEADERS, body:JSON.stringify(buildRecord({ staffList: list })) }); } catch {}
+      try { await FB_ROOT.child('staffList').set(list); } catch {}
     }
     async function pushReports(reports) {
       cacheReports(reports);
-      try { await fetch(JSONBIN_URL, { method:'PUT', headers:JSONBIN_HEADERS, body:JSON.stringify(buildRecord({ reports })) }); } catch {}
+      try { await FB_ROOT.child('reports').set(reports); } catch {}
     }
 
     const STAFF_CHAT_KEY = 'searcher_staffchat_v1';
@@ -3260,11 +3269,11 @@ async function lookupBreach(query, forcedType = null) {
     function cacheStaffChat(c) { localStorage.setItem(STAFF_CHAT_KEY, JSON.stringify(c)); }
     async function pushStaffChat(msgs) {
       cacheStaffChat(msgs);
-      try { await fetch(JSONBIN_URL, { method:'PUT', headers:JSONBIN_HEADERS, body:JSON.stringify(buildRecord({ staffChat: msgs })) }); } catch {}
+      try { await FB_ROOT.child('staffChat').set(msgs); } catch {}
     }
     async function pushUsers(users) {
       localStorage.setItem(USERS_KEY, JSON.stringify(users));
-      try { await fetch(JSONBIN_URL, { method:'PUT', headers:JSONBIN_HEADERS, body:JSON.stringify(buildRecord({ users })) }); } catch {}
+      try { await FB_ROOT.child('users').set(users); } catch {}
     }
 
     const BADGE_GRANTS_KEY          = 'searcher_badge_grants_v1';
@@ -3281,104 +3290,69 @@ async function lookupBreach(query, forcedType = null) {
       localStorage.setItem(CONSUMED_BADGE_GRANTS_KEY, JSON.stringify(arr));
     }
 
+    function applyFirebaseSnapshot(data) {
+      const entries       = data.entries       || [];
+      const premiumUsers  = data.premiumUsers  || [];
+      const creditGrants  = data.creditGrants  || [];
+      const badgeGrants   = data.badgeGrants   || [];
+      const blacklist     = data.blacklist      || [];
+      const broadcast     = data.broadcast     || null;
+      const staffList     = data.staffList     || [];
+      const reports       = data.reports       || [];
+      const staffChat     = data.staffChat     || [];
+      const remoteUsers   = data.users         || [];
+      const auditLog      = data.auditLog      || [];
+      const forcedLogouts = data.forcedLogouts || [];
+      cacheLeaderboard(entries);
+      cacheAuditLog(auditLog);
+      cacheForcedLogouts(forcedLogouts);
+      localStorage.setItem(PREMIUM_LIST_KEY, JSON.stringify(premiumUsers));
+      cacheCreditGrants(creditGrants);
+      cacheBadgeGrants(badgeGrants);
+      cacheBlacklist(blacklist);
+      cacheBroadcast(broadcast);
+      cacheStaffList(staffList);
+      cacheReports(reports);
+      cacheStaffChat(staffChat);
+      if (remoteUsers.length > 0) {
+        const local = getUsers();
+        const merged = [...remoteUsers];
+        local.forEach(u => { if (!merged.find(r => r.email === u.email)) merged.push(u); });
+        localStorage.setItem(USERS_KEY, JSON.stringify(merged));
+      }
+      return entries;
+    }
+
     async function fetchLeaderboard() {
       try {
-        const res = await fetch(`${JSONBIN_URL}/latest`, { headers: JSONBIN_HEADERS });
-        if (!res.ok) throw new Error('fetch failed');
-        const data = await res.json();
-        const entries = data.record?.entries || [];
-        const premiumUsers = data.record?.premiumUsers || [];
-        const creditGrants = data.record?.creditGrants || [];
-        const badgeGrants = data.record?.badgeGrants || [];
-        const blacklist = data.record?.blacklist || [];
-        const broadcast = data.record?.broadcast || null;
-        const staffList = data.record?.staffList || [];
-        const reports   = data.record?.reports   || [];
-        const staffChat = data.record?.staffChat  || [];
-        const remoteUsers = data.record?.users || [];
-        const auditLog      = data.record?.auditLog      || [];
-        const forcedLogouts = data.record?.forcedLogouts || [];
-        cacheLeaderboard(entries);
-        cacheAuditLog(auditLog);
-        cacheForcedLogouts(forcedLogouts);
-        localStorage.setItem(PREMIUM_LIST_KEY, JSON.stringify(premiumUsers));
-        cacheCreditGrants(creditGrants);
-        cacheBadgeGrants(badgeGrants);
-        cacheBlacklist(blacklist);
-        cacheBroadcast(broadcast);
-        cacheStaffList(staffList);
-        cacheReports(reports);
-        cacheStaffChat(staffChat);
-        if (remoteUsers.length > 0) {
-          const local = getUsers();
-          const merged = [...remoteUsers];
-          local.forEach(u => { if (!merged.find(r => r.email === u.email)) merged.push(u); });
-          localStorage.setItem(USERS_KEY, JSON.stringify(merged));
-        }
-        return entries;
+        const snap = await FB_ROOT.once('value');
+        const data = snap.val() || {};
+        return applyFirebaseSnapshot(data);
       } catch {
         return loadLeaderboard();
       }
     }
 
-    function buildRecord(overrides = {}) {
-      return {
-        entries: loadLeaderboard(),
-        premiumUsers: loadPremiumList(),
-        creditGrants: loadCreditGrants(),
-        badgeGrants: loadBadgeGrants(),
-        blacklist: loadBlacklist(),
-        broadcast: loadBroadcast(),
-        staffList: loadStaffList(),
-        reports:   loadReports(),
-        staffChat: loadStaffChat(),
-        users:     getUsers(),
-        auditLog:      loadAuditLog(),
-        forcedLogouts: loadForcedLogouts(),
-        ...overrides,
-      };
-    }
-
     async function pushLeaderboard(entries) {
       cacheLeaderboard(entries);
-      try {
-        await fetch(JSONBIN_URL, {
-          method: 'PUT', headers: JSONBIN_HEADERS,
-          body: JSON.stringify(buildRecord({ entries })),
-        });
-      } catch { /* cache saved, JSONBin silently failed */ }
+      try { await FB_ROOT.child('entries').set(entries); } catch {}
     }
 
     async function pushPremiumList(list) {
       localStorage.setItem(PREMIUM_LIST_KEY, JSON.stringify(list));
-      try {
-        await fetch(JSONBIN_URL, {
-          method: 'PUT', headers: JSONBIN_HEADERS,
-          body: JSON.stringify(buildRecord({ premiumUsers: list })),
-        });
-      } catch {}
+      try { await FB_ROOT.child('premiumUsers').set(list); } catch {}
     }
 
     async function pushCreditGrant(grant) {
       const grants = [...loadCreditGrants(), grant];
       cacheCreditGrants(grants);
-      try {
-        await fetch(JSONBIN_URL, {
-          method: 'PUT', headers: JSONBIN_HEADERS,
-          body: JSON.stringify(buildRecord({ creditGrants: grants })),
-        });
-      } catch {}
+      try { await FB_ROOT.child('creditGrants').set(grants); } catch {}
     }
 
     async function pushBadgeGrant(grant) {
       const grants = [...loadBadgeGrants(), grant];
       cacheBadgeGrants(grants);
-      try {
-        await fetch(JSONBIN_URL, {
-          method: 'PUT', headers: JSONBIN_HEADERS,
-          body: JSON.stringify(buildRecord({ badgeGrants: grants })),
-        });
-      } catch {}
+      try { await FB_ROOT.child('badgeGrants').set(grants); } catch {}
     }
 
     async function getAvatarForLeaderboard(profile, session) {
@@ -10118,10 +10092,7 @@ async function lookupBreach(query, forcedType = null) {
       const [broadcastMsg, setBroadcastMsg] = useState(() => loadBroadcast());
       const [broadcastDismissed, setBroadcastDismissed] = useState(false);
       const [reportTarget, setReportTarget] = useState(null);
-      useEffect(() => {
-        const interval = setInterval(() => { const b = loadBroadcast(); setBroadcastMsg(b); }, 30000);
-        return () => clearInterval(interval);
-      }, []);
+      const [fbTick, setFbTick] = useState(0);
 
       // Force-logout : vérification toutes les 30s
       useEffect(() => {
@@ -10151,7 +10122,7 @@ async function lookupBreach(query, forcedType = null) {
           if (idx < 0) return;
           es[idx] = { ...es[idx], lastSeen: Date.now() };
           cacheLeaderboard(es);
-          try { await fetch(JSONBIN_URL, { method:'PUT', headers:JSONBIN_HEADERS, body: JSON.stringify(buildRecord({ entries: es })) }); } catch {}
+          try { await FB_ROOT.child('entries').set(es); } catch {}
         };
         ping();
         const id = setInterval(ping, 120000);
@@ -10169,6 +10140,18 @@ async function lookupBreach(query, forcedType = null) {
       };
       const wasAlreadyPremiumRef = React.useRef(session ? isPremium(session) : false);
       useEffect(() => { applyTheme(theme); }, []);
+
+      useEffect(() => {
+        const handler = snap => {
+          const data = snap.val() || {};
+          applyFirebaseSnapshot(data);
+          setBroadcastMsg(loadBroadcast());
+          setPremiumList(loadPremiumList());
+          setFbTick(t => t + 1);
+        };
+        FB_ROOT.on('value', handler);
+        return () => FB_ROOT.off('value', handler);
+      }, []);
       useEffect(() => {
         fetchLeaderboard().then(() => {
           setPremiumList(loadPremiumList());
