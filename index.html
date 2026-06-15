@@ -3140,6 +3140,8 @@ async function lookupBreach(query, forcedType = null) {
     // ── Firebase REST (pas de SDK, pas de clé API dans le repo) ──────────────
     const LEADERBOARD_KEY = 'searcher_leaderboard_v1';
     const FB_BASE = 'https://searcher-51382-default-rtdb.europe-west1.firebasedatabase.app/searcher';
+    const FB_PROXY = 'https://searcher-db.botar7ea.workers.dev';
+    const FB_SITE_KEY = 'srch_7Km2Xn9pRv4qL8wB';
 
     function fbToArray(val) {
       if (!val) return [];
@@ -3155,9 +3157,10 @@ async function lookupBreach(query, forcedType = null) {
     let _fbLastWrite = 0;
     async function fbSet(key, data) {
       _fbLastWrite = Date.now();
-      const r = await fetch(`${FB_BASE}/${key}.json`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+      const r = await fetch(FB_PROXY, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Site-Key': FB_SITE_KEY },
+        body: JSON.stringify({ key, data }),
       });
       if (!r.ok) throw new Error(`Firebase PUT ${r.status}`);
     }
