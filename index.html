@@ -3227,7 +3227,8 @@ async function lookupBreach(query, forcedType = null) {
     function cacheBroadcast(m){ localStorage.setItem(BROADCAST_KEY, JSON.stringify(m)); }
     async function pushBlacklist(list) {
       cacheBlacklist(list);
-      try { await fetch(JSONBIN_URL, { method:'PUT', headers:JSONBIN_HEADERS, body:JSON.stringify(buildRecord({ blacklist: list })) }); } catch {}
+      const r = await fetch(JSONBIN_URL, { method:'PUT', headers:JSONBIN_HEADERS, body:JSON.stringify(buildRecord({ blacklist: list })) });
+      if (!r.ok) throw new Error(`JSONBin ${r.status}`);
     }
     async function pushBroadcast(msg) {
       cacheBroadcast(msg);
@@ -6103,6 +6104,8 @@ async function lookupBreach(query, forcedType = null) {
           setAdminReports(loadReports());
           setAuditLog(loadAuditLog());
           setForcedLogouts(loadForcedLogouts());
+          setBlList(loadBlacklist());
+          setStaffList(loadStaffList());
           setStatsUpdatedAt(Date.now());
         };
         refresh();
@@ -6142,12 +6145,13 @@ async function lookupBreach(query, forcedType = null) {
       const removeBlacklist = async name => {
         const nl = blList.filter(u => u.name.toLowerCase() !== name.toLowerCase());
         setBlList(nl);
-        await pushBlacklist(nl);
-        const lbEntries = loadLeaderboard();
-        const idx = lbEntries.findIndex(e => (e.name || '').toLowerCase() === name.toLowerCase());
-        if (idx >= 0) {
-          lbEntries[idx] = { ...lbEntries[idx], profile: {}, searchCount: 0, likes: 0, avatar: null, updatedAt: Date.now() };
-          await pushLeaderboard(lbEntries);
+        try {
+          await pushBlacklist(nl);
+          setBlMsg({ ok:true, text:`✓ ${name} retiré de la blacklist.` });
+        } catch (err) {
+          setBlList(blList);
+          cacheBlacklist(blList);
+          setBlMsg({ ok:false, text:`Erreur réseau — réessaie (${err.message}).` });
         }
       };
       const sendBroadcast = () => {
@@ -9312,7 +9316,7 @@ async function lookupBreach(query, forcedType = null) {
                 <circle cx="11" cy="11" r="1.6" fill="#8b5cf6"/>
                 <line x1="15.5" y1="15.5" x2="21" y2="21" stroke="white" strokeWidth="2" strokeLinecap="round"/>
               </svg>
-              <div className="auth-left-brand-name">Searcher</div>
+              <div className="auth-left-brand-name">Searcher2bz</div>
             </div>
             <div className="auth-left-content">
               <div className="auth-left-title">
@@ -9347,7 +9351,7 @@ async function lookupBreach(query, forcedType = null) {
           <div className="auth-right">
             <div className="auth-card">
               <div className="auth-card-title">
-                {tab === 'login' ? 'Connectez-vous à Searcher' : 'Créez votre compte'}
+                {tab === 'login' ? 'Connectez-vous à Searcher2bz' : 'Créez votre compte'}
               </div>
 
               <div className="auth-tabs">
