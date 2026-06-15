@@ -10214,57 +10214,58 @@ async function lookupBreach(query, forcedType = null) {
             }
           }
 
-          // Badges envoyés par l'admin
-          if (session) {
-            const bgrants = loadBadgeGrants();
-            const bconsumed = getConsumedBadgeGrants();
-            const bpending = bgrants.filter(g =>
-              g.name.toLowerCase() === (session.name || '').toLowerCase() &&
-              !bconsumed.includes(g.id)
-            );
-            if (bpending.length > 0) {
-              const p = loadPublicProfile();
-              let updated = { ...p };
-              bpending.forEach(g => {
-                markBadgeGrantConsumed(g.id);
-                if (g.action === 'give') {
-                  if (!updated.manualBadges.includes(g.badgeId))
-                    updated.manualBadges = [...updated.manualBadges, g.badgeId];
-                  if (!updated.enabledBadges.includes(g.badgeId))
-                    updated.enabledBadges = [...updated.enabledBadges, g.badgeId];
-                } else {
-                  updated.manualBadges = updated.manualBadges.filter(b => b !== g.badgeId);
-                  updated.enabledBadges = updated.enabledBadges.filter(b => b !== g.badgeId);
-                }
-              });
-              savePublicProfile(updated);
-              updateLeaderboardEntry(session, loadStats(), updated).catch(() => {});
-            }
-          }
+          processGrantsFromFirebase(session);
 
-          // Crédits envoyés par l'admin
-          if (session) {
-            const grants = loadCreditGrants();
-            const consumed = getConsumedGrants();
-            const pending = grants.filter(g =>
-              g.name.toLowerCase() === (session.name || '').toLowerCase() &&
-              !consumed.includes(g.id)
-            );
-            if (pending.length > 0) {
-              let total = 0;
-              pending.forEach(g => { total += g.amount; markGrantConsumed(g.id); });
-              const cred = loadCredits();
-              const nb = Math.max(0, cred.balance + total);
-              saveCredits({ balance: nb });
-              setCredits(nb); creditsRef.current = nb;
-              const delay = isPremium(session) && !localStorage.getItem('searcher_premium_bonus_v1') ? 1800 : 1100;
-              setTimeout(() => {
-                showToast(total > 0 ? `+${total} crédits reçus par un Admin !` : `${total} crédits retirés par un Admin.`);
-              }, delay);
-            }
-          }
         }).catch(() => {});
       }, []);
+
+      function processGrantsFromFirebase(sessionObj) {
+        if (!sessionObj) return;
+        // Badge grants
+        const bgrants = loadBadgeGrants();
+        const bconsumed = getConsumedBadgeGrants();
+        const bpending = bgrants.filter(g =>
+          g.name.toLowerCase() === (sessionObj.name || '').toLowerCase() &&
+          !bconsumed.includes(g.id)
+        );
+        if (bpending.length > 0) {
+          const p = loadPublicProfile();
+          let updated = { ...p };
+          bpending.forEach(g => {
+            markBadgeGrantConsumed(g.id);
+            if (g.action === 'give') {
+              if (!updated.manualBadges.includes(g.badgeId)) updated.manualBadges = [...updated.manualBadges, g.badgeId];
+              if (!updated.enabledBadges.includes(g.badgeId)) updated.enabledBadges = [...updated.enabledBadges, g.badgeId];
+            } else {
+              updated.manualBadges = updated.manualBadges.filter(b => b !== g.badgeId);
+              updated.enabledBadges = updated.enabledBadges.filter(b => b !== g.badgeId);
+            }
+          });
+          savePublicProfile(updated);
+          updateLeaderboardEntry(sessionObj, loadStats(), updated).catch(() => {});
+        }
+        // Credit grants
+        const grants = loadCreditGrants();
+        const consumed = getConsumedGrants();
+        const pending = grants.filter(g =>
+          g.name.toLowerCase() === (sessionObj.name || '').toLowerCase() &&
+          !consumed.includes(g.id)
+        );
+        if (pending.length > 0) {
+          let total = 0;
+          pending.forEach(g => { total += g.amount; markGrantConsumed(g.id); });
+          const cred = loadCredits();
+          const nb = Math.max(0, cred.balance + total);
+          saveCredits({ balance: nb });
+          setCredits(nb); creditsRef.current = nb;
+          showToast(total > 0 ? `+${total} crédits reçus par un Admin !` : `${total} crédits retirés par un Admin.`);
+        }
+      }
+
+      useEffect(() => {
+        if (fbTick === 0) return;
+        processGrantsFromFirebase(session);
+      }, [fbTick]);
 
       useEffect(() => {
         if (!discordLoading) return;
