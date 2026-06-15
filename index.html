@@ -2909,12 +2909,10 @@ async function lookupBreach(query, forcedType = null) {
     function isAdmin(session) {
       if (!session) return false;
       const id = getDiscordId(session);
-      // Discord : vérifie par ID si l'array est rempli, sinon par nom
       if (session.discord) {
         if (ADMIN_IDS.length > 0) return ADMIN_IDS.includes(id);
         return ADMIN_NAMES.some(n => n.toLowerCase() === (session.name || '').toLowerCase());
       }
-      // Compte local : vérifie par nom (protégé par mot de passe)
       return ADMIN_NAMES.some(n => n.toLowerCase() === (session.name || '').toLowerCase());
     }
 
@@ -3280,6 +3278,19 @@ async function lookupBreach(query, forcedType = null) {
       const name = (session.name || '').toLowerCase();
       return loadStaffList().some(s => s.toLowerCase() === name);
     }
+    // Verrouillage anti-console : isPremium = fn, isAdmin = fn, isBlacklisted = fn, etc. n'ont aucun effet
+    ;(function() {
+      var _lock = function(name, real) {
+        try { Object.defineProperty(window, name, { get: function(){ return real; }, set: function(){}, configurable: false, enumerable: false }); } catch(e) {}
+      };
+      _lock('isPremium',      isPremium);
+      _lock('isAdmin',        isAdmin);
+      _lock('isStaff',        isStaff);
+      _lock('isBlacklisted',  isBlacklisted);
+      _lock('loadPremiumList',loadPremiumList);
+      _lock('loadBlacklist',  loadBlacklist);
+      _lock('loadStaffList',  loadStaffList);
+    })();
     async function pushStaffList(list) {
       cacheStaffList(list);
       try { await FB_ROOT.child('staffList').set(list); } catch {}
