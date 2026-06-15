@@ -2916,11 +2916,20 @@ async function lookupBreach(query, forcedType = null) {
       return ADMIN_NAMES.some(n => n.toLowerCase() === (session.name || '').toLowerCase());
     }
 
+    const USER_CREDITS_KEY = 'searcher_ucredits_v1';
+    function loadUserCreditsCache() { try { return JSON.parse(localStorage.getItem(USER_CREDITS_KEY)) || {}; } catch { return {}; } }
+    function cacheUserCredits(obj)  { localStorage.setItem(USER_CREDITS_KEY, JSON.stringify(obj)); }
+    function ucKey(name) { return (name || '').toLowerCase().replace(/[.#$\[\]/]/g, '_'); }
+
     function loadCredits() {
       try { return JSON.parse(localStorage.getItem(CREDITS_KEY)) || { balance: 25 }; }
       catch { return { balance: 25 }; }
     }
     function saveCredits(c) { localStorage.setItem(CREDITS_KEY, JSON.stringify(c)); }
+    async function pushUserCredits(name, balance) {
+      if (!name) return;
+      try { await FB_ROOT.child('userCredits/' + ucKey(name)).set(balance); } catch(e) {}
+    }
     function getUsedCodes() {
       try { return JSON.parse(localStorage.getItem(USED_CODES_KEY)) || []; } catch { return []; }
     }
@@ -3278,19 +3287,10 @@ async function lookupBreach(query, forcedType = null) {
       const name = (session.name || '').toLowerCase();
       return loadStaffList().some(s => s.toLowerCase() === name);
     }
-    // Verrouillage anti-console : isPremium = fn, isAdmin = fn, isBlacklisted = fn, etc. n'ont aucun effet
-    ;(function() {
-      var _lock = function(name, real) {
-        try { Object.defineProperty(window, name, { get: function(){ return real; }, set: function(){}, configurable: false, enumerable: false }); } catch(e) {}
-      };
-      _lock('isPremium',      isPremium);
-      _lock('isAdmin',        isAdmin);
-      _lock('isStaff',        isStaff);
-      _lock('isBlacklisted',  isBlacklisted);
-      _lock('loadPremiumList',loadPremiumList);
-      _lock('loadBlacklist',  loadBlacklist);
-      _lock('loadStaffList',  loadStaffList);
-    })();
+    // Verrouillage anti-console : rend les fonctions d'auth non-assignables depuis window
+    ;['isPremium','isAdmin','isStaff','isBlacklisted','loadPremiumList','loadBlacklist','loadStaffList'].forEach(function(n) {
+      try { Object.defineProperty(window, n, { value: window[n], writable: false, configurable: false }); } catch(e) {}
+    });
     async function pushStaffList(list) {
       cacheStaffList(list);
       try { await FB_ROOT.child('staffList').set(list); } catch {}
@@ -3339,9 +3339,11 @@ async function lookupBreach(query, forcedType = null) {
       const remoteUsers   = fbToArray(data.users);
       const auditLog      = fbToArray(data.auditLog);
       const forcedLogouts = fbToArray(data.forcedLogouts);
+      const userCredits   = (data.userCredits && typeof data.userCredits === 'object') ? data.userCredits : {};
       cacheLeaderboard(entries);
       cacheAuditLog(auditLog);
       cacheForcedLogouts(forcedLogouts);
+      cacheUserCredits(userCredits);
       localStorage.setItem(PREMIUM_LIST_KEY, JSON.stringify(premiumUsers));
       cacheCreditGrants(creditGrants);
       cacheBadgeGrants(badgeGrants);
@@ -8161,7 +8163,9 @@ async function lookupBreach(query, forcedType = null) {
                           if (owned) { applyAndSync({ bgPreset: b.id }); return; }
                           const cred = loadCredits();
                           if (cred.balance < b.cost) return;
-                          saveCredits({ balance: cred.balance - b.cost });
+                          const nb = cred.balance - b.cost;
+                          saveCredits({ balance: nb });
+                          pushUserCredits(session?.name, nb);
                           applyAndSync({ bgPreset: b.id, unlockedAnimBgs: [...(profile.unlockedAnimBgs||[]), b.id] });
                         }}>
                         {b.icon}
@@ -8346,7 +8350,9 @@ async function lookupBreach(query, forcedType = null) {
                 const already = (profile.unlockedFrames||[]).includes(f);
                 if (fDef && !fDef.free && !already) {
                   const cred = loadCredits();
-                  saveCredits({ balance: cred.balance - (fDef.cost||0) });
+                  const nb = cred.balance - (fDef.cost||0);
+                  saveCredits({ balance: nb });
+                  pushUserCredits(session?.name, nb);
                   applyAndSync({ avatarFrame: f, unlockedFrames: [...(profile.unlockedFrames||[]), f] });
                 } else {
                   applyAndSync({ avatarFrame: f });
@@ -8366,7 +8372,9 @@ async function lookupBreach(query, forcedType = null) {
                 const already = (profile.unlockedEffects || []).includes(eff);
                 if (effDef && !effDef.free && !already) {
                   const cred = loadCredits();
-                  saveCredits({ balance: cred.balance - (effDef.cost || 0) });
+                  const nb = cred.balance - (effDef.cost || 0);
+                  saveCredits({ balance: nb });
+                  pushUserCredits(session?.name, nb);
                   applyAndSync({ usernameEffect: eff, unlockedEffects: [...(profile.unlockedEffects || []), eff] });
                 } else {
                   applyAndSync({ usernameEffect: eff });
@@ -10269,7 +10277,19 @@ async function lookupBreach(query, forcedType = null) {
           const nb = Math.max(0, cred.balance + total);
           saveCredits({ balance: nb });
           setCredits(nb); creditsRef.current = nb;
+          pushUserCredits(sessionObj.name, nb);
           showToast(total > 0 ? `+${total} crédits reçus par un Admin !` : `${total} crédits retirés par un Admin.`);
+        }
+        // Sync solde depuis Firebase — écrase toute modification localStorage
+        const ucache = loadUserCreditsCache();
+        const ukey = ucKey(sessionObj.name || '');
+        if (ukey && ucache[ukey] !== undefined) {
+          const fbBal = Number(ucache[ukey]);
+          if (!isNaN(fbBal) && fbBal !== loadCredits().balance) {
+            saveCredits({ balance: fbBal });
+            setCredits(fbBal);
+            creditsRef.current = fbBal;
+          }
         }
       }
 
@@ -10306,6 +10326,7 @@ async function lookupBreach(query, forcedType = null) {
         saveCredits({ balance: nb });
         localStorage.setItem(DAILY_BONUS_KEY, JSON.stringify({ lastClaim: today }));
         setCredits(nb); creditsRef.current = nb;
+        pushUserCredits(session?.name, nb);
         setTimeout(() => showToast(`+${DAILY_BONUS_AMOUNT} crédits — Bonus quotidien !`), 900);
       }, [session]);
 
@@ -10349,6 +10370,7 @@ async function lookupBreach(query, forcedType = null) {
         saveCredits({ balance: newBal });
         creditsRef.current = newBal;
         setCredits(newBal);
+        pushUserCredits(sessionRef.current?.name, newBal);
 
         setQuery(q);
         setPage('results');
@@ -10692,8 +10714,8 @@ async function lookupBreach(query, forcedType = null) {
             visible={showTheme}
             config={config}
             onConfigChange={cfg => { setConfig(cfg); saveConfig(cfg); }} />
-          <RedeemModal credits={credits} onCreditsUpdate={b => { setCredits(b); creditsRef.current = b; }} onClose={() => setShowRedeem(false)} visible={showRedeem} />
-          <MiniGameModal visible={showMiniGame} onClose={() => setShowMiniGame(false)} credits={credits} onCreditsUpdate={b => { setCredits(b); creditsRef.current = b; }} showToast={showToast} />
+          <RedeemModal credits={credits} onCreditsUpdate={b => { setCredits(b); creditsRef.current = b; pushUserCredits(session?.name, b); }} onClose={() => setShowRedeem(false)} visible={showRedeem} />
+          <MiniGameModal visible={showMiniGame} onClose={() => setShowMiniGame(false)} credits={credits} onCreditsUpdate={b => { setCredits(b); creditsRef.current = b; pushUserCredits(session?.name, b); }} showToast={showToast} />
           <Toast toasts={toasts} />
         </>
       );
