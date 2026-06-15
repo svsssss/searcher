@@ -3153,18 +3153,16 @@ async function lookupBreach(query, forcedType = null) {
       });
       if (!r.ok) throw new Error(`Firebase PUT ${r.status}`);
     }
-    let _fbES = null;
+    let _fbInterval = null;
     const FB_ROOT = {
       once:  async ()      => { const data = await fbGet(); return { val: () => data }; },
       child: (key)         => ({ set: (data) => fbSet(key, data) }),
       on:    (ev, handler) => {
-        _fbES = new EventSource(`${FB_BASE}.json`);
-        const refresh = () => fbGet().then(data => handler({ val: () => data })).catch(() => {});
-        _fbES.addEventListener('put',   refresh);
-        _fbES.addEventListener('patch', refresh);
-        _fbES.onerror = () => { /* SSE reconnects automatically */ };
+        const tick = () => fbGet().then(data => handler({ val: () => data })).catch(() => {});
+        tick();
+        _fbInterval = setInterval(tick, 5000);
       },
-      off: () => { if (_fbES) { _fbES.close(); _fbES = null; } },
+      off: () => { if (_fbInterval) { clearInterval(_fbInterval); _fbInterval = null; } },
     };
 
     // ── Audit Log ─────────────────────────────────────────────────────────────
