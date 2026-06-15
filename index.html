@@ -9044,6 +9044,18 @@ async function lookupBreach(query, forcedType = null) {
       return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
     }
     async function registerUser(name, email, password) {
+      // Sync Firebase d'abord pour avoir la liste globale à jour
+      try {
+        const snap = await FB_ROOT.once('value');
+        const data = snap.val() || {};
+        const remoteUsers = fbToArray(data.users);
+        if (remoteUsers.length > 0) {
+          const local = getUsers();
+          const merged = [...remoteUsers];
+          local.forEach(u => { if (!merged.find(r => r.email === u.email)) merged.push(u); });
+          localStorage.setItem(USERS_KEY, JSON.stringify(merged));
+        }
+      } catch(e) {}
       const users = getUsers();
       if (users.find(u => u.email.toLowerCase() === email.toLowerCase()))
         throw new Error('Un compte existe déjà avec cet email.');
