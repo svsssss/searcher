@@ -3141,12 +3141,20 @@ async function lookupBreach(query, forcedType = null) {
     const LEADERBOARD_KEY = 'searcher_leaderboard_v1';
     const FB_BASE = 'https://searcher-51382-default-rtdb.europe-west1.firebasedatabase.app/searcher';
 
+    function fbToArray(val) {
+      if (!val) return [];
+      if (Array.isArray(val)) return val;
+      if (typeof val === 'object') return Object.values(val);
+      return [];
+    }
     async function fbGet() {
       const r = await fetch(`${FB_BASE}.json`);
       if (!r.ok) throw new Error(`Firebase GET ${r.status}`);
       return (await r.json()) || {};
     }
+    let _fbLastWrite = 0;
     async function fbSet(key, data) {
+      _fbLastWrite = Date.now();
       const r = await fetch(`${FB_BASE}/${key}.json`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -3158,8 +3166,11 @@ async function lookupBreach(query, forcedType = null) {
       once:  async ()      => { const data = await fbGet(); return { val: () => data }; },
       child: (key)         => ({ set: (data) => fbSet(key, data) }),
       on:    (ev, handler) => {
-        const tick = () => fbGet().then(data => handler({ val: () => data })).catch(() => {});
-        tick();
+        const tick = () => {
+          if (Date.now() - _fbLastWrite < 3000) return;
+          fbGet().then(data => handler({ val: () => data })).catch(() => {});
+        };
+        setTimeout(() => tick(), 2000);
         _fbInterval = setInterval(tick, 5000);
       },
       off: () => { if (_fbInterval) { clearInterval(_fbInterval); _fbInterval = null; } },
@@ -3302,18 +3313,18 @@ async function lookupBreach(query, forcedType = null) {
     }
 
     function applyFirebaseSnapshot(data) {
-      const entries       = data.entries       || [];
-      const premiumUsers  = data.premiumUsers  || [];
-      const creditGrants  = data.creditGrants  || [];
-      const badgeGrants   = data.badgeGrants   || [];
-      const blacklist     = data.blacklist      || [];
+      const entries       = fbToArray(data.entries);
+      const premiumUsers  = fbToArray(data.premiumUsers);
+      const creditGrants  = fbToArray(data.creditGrants);
+      const badgeGrants   = fbToArray(data.badgeGrants);
+      const blacklist     = fbToArray(data.blacklist);
       const broadcast     = data.broadcast     || null;
-      const staffList     = data.staffList     || [];
-      const reports       = data.reports       || [];
-      const staffChat     = data.staffChat     || [];
-      const remoteUsers   = data.users         || [];
-      const auditLog      = data.auditLog      || [];
-      const forcedLogouts = data.forcedLogouts || [];
+      const staffList     = fbToArray(data.staffList);
+      const reports       = fbToArray(data.reports);
+      const staffChat     = fbToArray(data.staffChat);
+      const remoteUsers   = fbToArray(data.users);
+      const auditLog      = fbToArray(data.auditLog);
+      const forcedLogouts = fbToArray(data.forcedLogouts);
       cacheLeaderboard(entries);
       cacheAuditLog(auditLog);
       cacheForcedLogouts(forcedLogouts);
