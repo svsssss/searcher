@@ -2649,6 +2649,37 @@
       return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(q.trim());
     }
 
+    function parseMultiQuery(raw) {
+      const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
+      if (parts.length < 2) return null;
+      const nameWords = [];
+      let year = null, email = null, phone = null, city = null, postal = null;
+      for (const p of parts) {
+        if (/^(19|20)\d{2}$/.test(p) && +p >= 1920 && +p <= 2015) { year = p; }
+        else if (looksLikeEmail(p)) { email = p; }
+        else if (looksLikePhone(p)) { phone = p; }
+        else if (/^\d{5}$/.test(p)) { postal = p; }
+        else if (/^[A-ZÀ-Ÿa-zà-ÿ][A-ZÀ-Ÿa-zà-ÿ\s'\-]{0,}$/.test(p)) { nameWords.push(p); }
+      }
+      let name = null;
+      if (nameWords.length > 0) {
+        const full = nameWords.find(n => n.includes(' '));
+        if (full) {
+          name = full;
+          const rest = nameWords.filter(n => n !== full);
+          if (!city && rest.length > 0) city = rest[0];
+        } else if (nameWords.length === 1) {
+          name = nameWords[0];
+        } else {
+          const joined = nameWords.join(' ');
+          if (looksLikePerson(joined)) { name = joined; }
+          else { name = nameWords[0]; city = nameWords[1]; }
+        }
+      }
+      if (!name && !email && !phone) return null;
+      return { parts, name, year, email, phone, city, postal };
+    }
+
     function looksLikeUsername(q) {
       return /^@[a-zA-Z0-9_]{2,30}$/.test(q.trim());
     }
@@ -5871,6 +5902,28 @@ async function lookupBreach(query, forcedType = null) {
             <span style={{ padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:700, background:'rgba(59,130,246,0.12)', color:'#3b82f6', border:'1px solid rgba(59,130,246,0.2)', letterSpacing:'0.03em' }}>ID MATRIX</span>
           </div>
 
+          {/* Active filter chips */}
+          {data.multi && (() => {
+            const m = data.multi;
+            const chips = [];
+            if (m.name)   chips.push({ label: m.name,   icon: '👤' });
+            if (m.year)   chips.push({ label: m.year,   icon: '📅' });
+            if (m.city)   chips.push({ label: m.city,   icon: '📍' });
+            if (m.postal) chips.push({ label: m.postal, icon: '🗺️' });
+            if (m.email)  chips.push({ label: m.email,  icon: '✉️' });
+            if (m.phone)  chips.push({ label: m.phone,  icon: '📞' });
+            return chips.length > 0 ? (
+              <div style={{ padding:'8px 20px', borderBottom:'1px solid rgba(59,130,246,0.1)', display:'flex', flexWrap:'wrap', gap:6, alignItems:'center' }}>
+                <span style={{ fontSize:10, color:'var(--ink-mute)', fontFamily:"'JetBrains Mono',monospace", letterSpacing:'0.06em', marginRight:4 }}>FILTRES</span>
+                {chips.map((c, i) => (
+                  <span key={i} style={{ padding:'3px 10px', borderRadius:99, fontSize:11, background:'rgba(59,130,246,0.1)', color:'#3b82f6', border:'1px solid rgba(59,130,246,0.2)', fontWeight:500 }}>
+                    {c.icon} {c.label}
+                  </span>
+                ))}
+              </div>
+            ) : null;
+          })()}
+
           {/* Profiles */}
           <div style={{ display:'flex', flexDirection:'column' }}>
             {shown.map((r, i) => {
@@ -6113,10 +6166,33 @@ async function lookupBreach(query, forcedType = null) {
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H5a1 1 0 01-1-1V9.5z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/><path d="M9 21V12h6v9" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg>
               Accueil
             </button>
-            <form className="results-search-wrap" onSubmit={submit}>
-              <span className="search-icon" style={{ left:14, color:'var(--ink-mute)' }}><SearchIcon size={17} /></span>
-              <input className="results-search" type="text" value={input} onChange={e => setInput(e.target.value)} placeholder="Nouvelle recherche…" autoFocus />
-              <span className="kbd">↵</span>
+            <form className="results-search-wrap" onSubmit={submit} style={{ flexDirection:'column', alignItems:'stretch', gap:0 }}>
+              <div style={{ display:'flex', alignItems:'center', width:'100%' }}>
+                <span className="search-icon" style={{ left:14, color:'var(--ink-mute)' }}><SearchIcon size={17} /></span>
+                <input className="results-search" type="text" value={input} onChange={e => setInput(e.target.value)} placeholder="Recherche… ou Prénom Nom , 2001 , Paris" autoFocus style={{ flex:1 }} />
+                <span className="kbd">↵</span>
+              </div>
+              {input.includes(',') && (() => {
+                const _m = parseMultiQuery(input);
+                if (!_m) return null;
+                const _chips = [
+                  _m.name   && { label: _m.name,   icon: '👤', c: '#818cf8' },
+                  _m.email  && { label: _m.email,  icon: '✉️', c: '#60a5fa' },
+                  _m.phone  && { label: _m.phone,  icon: '📞', c: '#34d399' },
+                  _m.year   && { label: _m.year,   icon: '📅', c: '#4ade80' },
+                  _m.city   && { label: _m.city,   icon: '📍', c: '#f59e0b' },
+                  _m.postal && { label: _m.postal, icon: '🗺️', c: '#a78bfa' },
+                ].filter(Boolean);
+                if (_chips.length < 2) return null;
+                return (
+                  <div style={{ padding:'4px 12px 6px', display:'flex', flexWrap:'wrap', gap:5, borderTop:'1px solid var(--rule)' }}>
+                    <span style={{ fontSize:10, color:'var(--ink-mute)', alignSelf:'center' }}>multi :</span>
+                    {_chips.map((_c, _i) => (
+                      <span key={_i} style={{ padding:'2px 8px', borderRadius:99, fontSize:11, background:`${_c.c}18`, color:_c.c, border:`1px solid ${_c.c}33` }}>{_c.icon} {_c.label}</span>
+                    ))}
+                  </div>
+                );
+              })()}
             </form>
             <button className="export-btn" onClick={isPremium(session) ? exportJSON : onPricing} title={isPremium(session) ? 'Exporter les résultats' : 'Réservé aux abonnés Premium'} style={!isPremium(session) ? { opacity:0.5 } : {}}>
               {isPremium(session)
@@ -10474,6 +10550,70 @@ async function lookupBreach(query, forcedType = null) {
 
       const handleSearch = useCallback(async (q, forcedType = null) => {
         const cfg = configRef.current;
+
+        /* ── Multi-criteria search (comma-separated) ── */
+        if (!forcedType && q.includes(',')) {
+          const multi = parseMultiQuery(q);
+          if (multi) {
+            const primaryQ    = multi.email || multi.phone || multi.name;
+            const primaryType = multi.email ? 'email' : multi.phone ? 'phone' : 'person';
+            if (!isPremium(sessionRef.current) && primaryType === 'person') {
+              showToast('Fonctionnalité réservée aux abonnés Premium', 'error');
+              setShowPricing(true); return;
+            }
+            if (!checkRateLimit()) {
+              showToast('Trop vite — max 8 recherches / minute.', 'error');
+              const s = sessionRef.current;
+              addAuditEntry(s?.id||s?.name||'?', s?.name||'?', 'rate_limit', q); return;
+            }
+            const bal = creditsRef.current;
+            if (bal <= 0) { setShowRedeem(true); return; }
+            const newBal = bal - 1;
+            saveCredits({ balance: newBal }); creditsRef.current = newBal;
+            setCredits(newBal); pushUserCredits(sessionRef.current?.name, newBal);
+
+            setQuery(q); setPage('results'); setLoading(true); setError(null); setResults([]);
+            setPhoneResult(null); setIpResult(null); setWhoisResult(null); setShodanResult(null);
+            setPersonResult(null); setEmailResult(null); setImageResult(null); setDecoderResult(null);
+            setUsernameResult(null); setTiktokResult(null); setBreachResult(null); setHudsonResult(null);
+            setBrixhubResult(null); setSteamResult(null); setMcResult(null);
+
+            addToHistory(q, 'multi'); addStat('person');
+            if (multi.name)  setPersonResult(primaryQ);
+            if (multi.phone) setPhoneResult(validatePhone(multi.phone));
+            if (multi.email) setEmailResult(multi.email);
+
+            setBreachResult({ loading: true, query: primaryQ });
+            lookupBreach(primaryQ, primaryType)
+              .then(data => setBreachResult(data))
+              .catch(e  => setBreachResult({ query: primaryQ, error: e.message }));
+
+            if (cfg.brixhubKey) {
+              setBrixhubResult({ loading: true, query: q, multi });
+              lookupBrixhub(primaryQ, primaryType, cfg.brixhubKey).then(data => {
+                if (!data.results) { setBrixhubResult({ ...data, query: q, multi }); return; }
+                let filtered = [...data.results];
+                if (multi.year) filtered = filtered.filter(r => {
+                  const ry = r.annee_naissance || (r.date_naissance || '').slice(0, 4);
+                  return !ry || String(ry) === multi.year;
+                });
+                if (multi.city) {
+                  const c = multi.city.toLowerCase();
+                  filtered = filtered.filter(r =>
+                    (r.ville||'').toLowerCase().includes(c) ||
+                    (r.ville_naissance||'').toLowerCase().includes(c) ||
+                    (r.departement||'').toLowerCase().includes(c) ||
+                    (r.region||'').toLowerCase().includes(c)
+                  );
+                }
+                if (multi.postal) filtered = filtered.filter(r => (r.code_postal||'') === multi.postal);
+                setBrixhubResult({ ...data, results: filtered, meta: { ...data.meta, total: filtered.length }, query: q, multi });
+              }).catch(e => setBrixhubResult({ query: q, error: e.message }));
+            }
+            setLoading(false);
+            return;
+          }
+        }
 
         /* Type detection */
         const isIP       = looksLikeIP(q);
