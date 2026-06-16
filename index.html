@@ -557,6 +557,103 @@
     }
     .btn-configure:hover { background: var(--blue-deep); }
 
+    /* ── Results Tabs ── */
+    .results-tabs-bar {
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid var(--rule);
+      padding: 0 24px;
+      gap: 2px;
+      flex-shrink: 0;
+      background: var(--bg);
+      position: relative;
+      z-index: 5;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .results-tabs-bar::-webkit-scrollbar { display: none; }
+    .rtab {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 11px 14px 12px;
+      font-family: 'Geist', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink-mute);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: none;
+      white-space: nowrap;
+      transition: color 0.15s;
+      position: relative;
+      top: 1px;
+      letter-spacing: -0.01em;
+    }
+    .rtab:hover { color: var(--ink); }
+    .rtab.rtab-active { color: var(--blue); border-bottom-color: var(--blue); }
+    .rtab-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 17px;
+      height: 17px;
+      padding: 0 5px;
+      border-radius: 99px;
+      font-size: 10px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--blue-soft);
+      color: var(--blue-deep);
+      transition: background 0.15s, color 0.15s;
+    }
+    .rtab.rtab-active .rtab-badge { background: var(--blue); color: #fff; }
+    .rtab-badge.bp { animation: textPulse 1.2s infinite; background: rgba(37,99,255,0.08); color: var(--blue); }
+    .rtab-badge.br { background: rgba(239,68,68,0.12); color: #ef4444; }
+    .rtab.rtab-active .rtab-badge.br { background: #ef4444; color: #fff; }
+    .rtab-badge.bg { background: rgba(22,163,74,0.12); color: #16a34a; }
+
+    /* Source status pills */
+    .src-summary {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+      padding-bottom: 20px;
+    }
+    .src-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px 4px 8px;
+      border-radius: 999px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 500;
+      border: 1px solid var(--rule);
+      color: var(--ink-mute);
+      background: none;
+      transition: all 0.15s;
+      cursor: none;
+      line-height: 1;
+    }
+    .src-pill.s-found { border-color: rgba(22,163,74,0.35); color: #16a34a; background: rgba(22,163,74,0.06); }
+    .src-pill.s-found:hover { background: rgba(22,163,74,0.12); }
+    .src-pill.s-danger { border-color: rgba(239,68,68,0.35); color: #ef4444; background: rgba(239,68,68,0.06); }
+    .src-pill.s-danger:hover { background: rgba(239,68,68,0.12); }
+    .src-pill.s-loading { border-color: rgba(37,99,255,0.2); color: var(--blue); animation: textPulse 1.5s infinite; }
+    .src-dot-sm { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+    /* Tab content wrapper */
+    .rtab-content { display: flex; flex-direction: column; gap: 0; }
+    .rtab-empty {
+      display: flex; flex-direction: column; align-items: center;
+      text-align: center; padding: 60px 24px; gap: 10px; color: var(--ink-mute);
+    }
+    .rtab-empty svg { opacity: 0.2; margin-bottom: 8px; }
+    .rtab-empty-title { font-size: 16px; font-weight: 600; color: var(--ink-soft); }
+    .rtab-empty-sub { font-size: 13px; max-width: 300px; line-height: 1.5; }
+
     /* ── Settings Modal ── */
     @keyframes overlayIn {
       from { opacity: 0; }
@@ -5874,6 +5971,7 @@ async function lookupBreach(query, forcedType = null) {
     // ── Results Page ──────────────────────────────────────────────────────────
     function ResultsPage({ query, results, loading, error, phoneResult, ipResult, whoisResult, shodanResult, personResult, emailResult, imageResult, decoderResult, usernameResult, tiktokResult, breachResult, hudsonResult, brixhubResult, steamResult, mcResult, config, onSearch, onTheme, onPricing, onPatchnote, onRedeem, onLeaderboard, onMiniGame, miniGameAvailable, credits, onBack, followSpeed, session, onLogout, onProfile, onAdmin, onBulk, onStaff }) {
       const [input, setInput] = useState(query);
+      const [activeTab, setActiveTab] = useState('tout');
       const [onlineCount, setOnlineCount] = useState(() => {
         const cutoff = Date.now() - 3 * 60 * 1000;
         return loadLeaderboard().filter(e => (e.lastSeen||0) > cutoff).length;
@@ -5887,163 +5985,191 @@ async function lookupBreach(query, forcedType = null) {
       }, []);
 
       const submit = e => { e.preventDefault(); if (input.trim()) onSearch(input.trim()); };
-
       const exportJSON = () => {
-        const data = {
-          query, exportedAt: new Date().toISOString(),
-          results: results.map(({ title, url, description, source }) => ({ title, url, description, source })),
-          ...(phoneResult && { phoneResult: { formatted: phoneResult.formatted, country: phoneResult.country, type: phoneResult.type, valid: phoneResult.valid } }),
-          ...(ipResult?.data && { ipResult: ipResult.data }),
-          ...(whoisResult?.data && { whoisResult: whoisResult.data }),
-        };
+        const data = { query, exportedAt: new Date().toISOString(), results: results.map(({ title, url, description, source }) => ({ title, url, description, source })), ...(phoneResult && { phoneResult: { formatted: phoneResult.formatted, country: phoneResult.country, type: phoneResult.type, valid: phoneResult.valid } }), ...(ipResult?.data && { ipResult: ipResult.data }), ...(whoisResult?.data && { whoisResult: whoisResult.data }) };
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url  = URL.createObjectURL(blob);
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url; a.download = `searcher-${query.replace(/\W+/g,'_').slice(0,30)}-${Date.now()}.json`;
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       };
 
+      // ── Tab visibility ────────────────────────────────────────────────────────
+      const hasLeaks    = !!(breachResult || hudsonResult);
+      const hasIdentite = !!(brixhubResult || personResult || phoneResult || emailResult);
+      const hasSocial   = !!(tiktokResult || usernameResult || steamResult || mcResult);
+      const hasReseau   = !!(ipResult || whoisResult || shodanResult);
+
+      const leaksLoading  = !!(breachResult?.loading || hudsonResult?.loading);
+      const leaksCount    = (!breachResult?.loading && (breachResult?.bvip?.total || 0)) + (!hudsonResult?.loading && (hudsonResult?.stealers?.length || 0));
+      const brixLoading   = !!brixhubResult?.loading;
+      const brixCount     = !brixhubResult?.loading && !brixhubResult?.error ? (brixhubResult?.profiles?.length || brixhubResult?.total || 0) : 0;
+
+      const tabs = [
+        { id: 'tout',     label: 'Tout' },
+        ...(hasLeaks    ? [{ id: 'leaks',    label: 'Leaks',    count: leaksCount, loading: leaksLoading, danger: leaksCount > 0 }] : []),
+        ...(hasIdentite ? [{ id: 'identite', label: 'Identité', count: brixCount,  loading: brixLoading }] : []),
+        ...(hasSocial   ? [{ id: 'social',   label: 'Social' }] : []),
+        ...(hasReseau   ? [{ id: 'réseau',   label: 'Réseau' }] : []),
+        { id: 'web', label: 'Web', count: results.length, loading },
+      ];
+
+      // ── Source pills (shown on Tout tab) ─────────────────────────────────────
+      const pills = [
+        breachResult && { key:'bvip',   label:'BreachVIP',    cls: breachResult.loading ? 's-loading' : (breachResult.bvip?.total > 0 ? 's-danger' : null), detail: breachResult.bvip?.total > 0 ? `${breachResult.bvip.total} leaks` : null, tab:'leaks' },
+        hudsonResult && { key:'hud',    label:'Infostealers', cls: hudsonResult.loading  ? 's-loading' : (hudsonResult.stealers?.length > 0 ? 's-danger' : null), detail: hudsonResult.stealers?.length > 0 ? `${hudsonResult.stealers.length} infection${hudsonResult.stealers.length>1?'s':''}` : null, tab:'leaks' },
+        brixhubResult && { key:'brix',  label:'BrixHub',      cls: brixhubResult.loading ? 's-loading' : (brixCount > 0 ? 's-found' : null), detail: brixCount > 0 ? `${brixCount} profil${brixCount>1?'s':''}` : null, tab:'identite' },
+        personResult  && { key:'per',   label:'Personnes',    cls:'s-found', detail: null, tab:'identite' },
+        (tiktokResult || usernameResult) && { key:'soc', label:'Social', cls:'s-found', detail: null, tab:'social' },
+        (ipResult || whoisResult || shodanResult) && { key:'net', label:'Réseau', cls: (ipResult?.loading || whoisResult?.loading) ? 's-loading' : 's-found', detail: null, tab:'réseau' },
+        { key:'web', label:'Wikipedia', cls: loading ? 's-loading' : results.length > 0 ? 's-found' : null, detail: results.length > 0 ? `${results.length} résultat${results.length>1?'s':''}` : null, tab:'web' },
+      ].filter(p => p && p.cls);
+
+      // ── Skeleton blocks ───────────────────────────────────────────────────────
+      const Skeletons = ({ n = 4, heights }) => (
+        <div className="results-list">
+          {Array.from({length:n}, (_,i) => (
+            <div key={i} className="result-skeleton" style={{ height: heights?.[i] || (i===0?115:90) }} />
+          ))}
+        </div>
+      );
+
+      // ── Tab content sections ──────────────────────────────────────────────────
+      const LeaksContent = () => (
+        <div className="rtab-content">
+          {breachResult && <BreachResult data={breachResult} />}
+          {hudsonResult && <HudsonResult data={hudsonResult} />}
+          {!breachResult && !hudsonResult && <div className="rtab-empty"><svg width="40" height="40" viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg><div className="rtab-empty-title">Aucun leak détecté</div><div className="rtab-empty-sub">Aucune donnée compromise trouvée pour cette cible.</div></div>}
+        </div>
+      );
+
+      const IdentiteContent = () => (
+        <div className="rtab-content">
+          {brixhubResult && <BrixhubResult data={brixhubResult} />}
+          {personResult  && <PersonCard name={personResult} />}
+          {phoneResult   && <PhoneCard phone={phoneResult} />}
+          {phoneResult   && <MessagingCard phone={phoneResult} />}
+          {emailResult   && <EmailCard email={emailResult} />}
+          {emailResult   && <SocialCheckCard email={emailResult} />}
+        </div>
+      );
+
+      const SocialContent = () => (
+        <div className="rtab-content">
+          {tiktokResult   && <TikTokCard username={tiktokResult} />}
+          {usernameResult && <UsernameCard username={usernameResult} />}
+          {steamResult    && <SteamResult data={steamResult} />}
+          {mcResult       && <MinecraftResult data={mcResult} />}
+        </div>
+      );
+
+      const ReseauContent = () => (
+        <div className="rtab-content">
+          {ipResult     && <IPCard result={ipResult} />}
+          {shodanResult && <ShodanCard result={shodanResult} />}
+          {whoisResult  && <WhoisCard result={whoisResult} />}
+        </div>
+      );
+
+      const WebContent = () => (
+        <div className="rtab-content">
+          {imageResult   && <ImageSearchCard url={imageResult} />}
+          {decoderResult && <DecoderCard input={decoderResult} />}
+          {loading && <Skeletons n={4} />}
+          {!loading && error && (
+            <div className="results-error">
+              <span className="error-icon">⚠</span>
+              <div><div className="error-title">Erreur lors de la recherche</div><div className="error-desc">{error}</div></div>
+            </div>
+          )}
+          {!loading && !error && results.length === 0 && !imageResult && !decoderResult && (
+            <div className="results-empty">
+              <div className="empty-icon"><SearchIcon size={48} /></div>
+              <div className="empty-title">Aucun résultat web</div>
+              <div className="empty-desc">Aucun résultat Wikipedia pour <b>"{query}"</b>.</div>
+            </div>
+          )}
+          {!loading && !error && results.length > 0 && (
+            <>
+              <div className="results-meta" style={{ marginBottom:16 }}>
+                <span className="results-count">{results.length} résultat{results.length!==1?'s':''} pour <b>"{query}"</b></span>
+                <div className="source-chips">
+                  {[...new Set(results.map(r => r.source))].map(src => <span key={src} className="source-chip">{src}</span>)}
+                </div>
+              </div>
+              <div className="results-list">{results.map(r => <ResultCard key={r.id} result={r} />)}</div>
+            </>
+          )}
+        </div>
+      );
+
       return (
-        <div className="results-root" style={{ marginLeft: 'var(--sb-width, 178px)', transition:'margin-left 0.22s cubic-bezier(0.4,0,0.2,1)' }}>
+        <div className="results-root" style={{ marginLeft:'var(--sb-width, 178px)', transition:'margin-left 0.22s cubic-bezier(0.4,0,0.2,1)' }}>
           {config?.showMagnifier !== false && <Magnifier followSpeed={followSpeed} />}
           <WordField compact />
-          <Sidebar
-            session={session}
-            credits={credits}
-            activePage="results"
-            onHome={onBack}
-            onProfile={onProfile}
-            onMiniGame={onMiniGame}
-            miniGameAvailable={miniGameAvailable}
-            onLeaderboard={onLeaderboard}
-            onPatchnote={onPatchnote}
-            onPricing={onPricing}
-            onRedeem={onRedeem}
-            onTheme={onTheme}
-            onLogout={onLogout}
-            onAdmin={onAdmin}
-            onBulk={onBulk}
-            onStaff={onStaff}
-          />
+          <Sidebar session={session} credits={credits} activePage="results" onHome={onBack} onProfile={onProfile} onMiniGame={onMiniGame} miniGameAvailable={miniGameAvailable} onLeaderboard={onLeaderboard} onPatchnote={onPatchnote} onPricing={onPricing} onRedeem={onRedeem} onTheme={onTheme} onLogout={onLogout} onAdmin={onAdmin} onBulk={onBulk} onStaff={onStaff} />
 
           <div className="corner tr">
             <div className="badge"><span className="live" />&nbsp;{onlineCount > 0 ? `${onlineCount} en ligne` : 'En ligne'}</div>
           </div>
 
+          {/* ── Topbar ── */}
           <div className="results-topbar">
             <button className="nav-btn home" onClick={onBack} title="Retour à l'accueil">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H5a1 1 0 01-1-1V9.5z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/><path d="M9 21V12h6v9" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg>
               Accueil
             </button>
             <form className="results-search-wrap" onSubmit={submit}>
-              <span className="search-icon" style={{ left: 14, color: 'var(--ink-mute)' }}>
-                <SearchIcon size={17} />
-              </span>
-              <input
-                className="results-search"
-                type="text"
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                placeholder="Nouvelle recherche…"
-                autoFocus
-              />
+              <span className="search-icon" style={{ left:14, color:'var(--ink-mute)' }}><SearchIcon size={17} /></span>
+              <input className="results-search" type="text" value={input} onChange={e => setInput(e.target.value)} placeholder="Nouvelle recherche…" autoFocus />
               <span className="kbd">↵</span>
             </form>
-            <button
-              className="export-btn"
-              onClick={isPremium(session) ? exportJSON : onPricing}
-              title={isPremium(session) ? 'Exporter les résultats' : 'Réservé aux abonnés Premium'}
-              style={!isPremium(session) ? { opacity: 0.5 } : {}}
-            >
+            <button className="export-btn" onClick={isPremium(session) ? exportJSON : onPricing} title={isPremium(session) ? 'Exporter les résultats' : 'Réservé aux abonnés Premium'} style={!isPremium(session) ? { opacity:0.5 } : {}}>
               {isPremium(session)
                 ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 3v13M7 11l5 5 5-5M3 18v1a2 2 0 002 2h14a2 2 0 002-2v-1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                : <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" strokeWidth="1.8"/><path d="M7 11V7a5 5 0 0110 0v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
-              }
+                : <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" strokeWidth="1.8"/><path d="M7 11V7a5 5 0 0110 0v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>}
               Export
             </button>
           </div>
 
+          {/* ── Tab bar ── */}
+          <div className="results-tabs-bar">
+            {tabs.map(tab => (
+              <button key={tab.id} className={`rtab${activeTab===tab.id?' rtab-active':''}`} onClick={() => setActiveTab(tab.id)}>
+                {tab.label}
+                {tab.loading && <span className="rtab-badge bp">●</span>}
+                {!tab.loading && tab.count > 0 && <span className={`rtab-badge${tab.danger?' br':''}`}>{tab.count}</span>}
+              </button>
+            ))}
+          </div>
+
+          {/* ── Body ── */}
           <div className="results-body">
-            {/* Built-in sources banner */}
-            <div className="builtin-banner">
-              <span className="builtin-label">Sources actives :</span>
-              <span className="builtin-chip"><span className="dot-green" />Wikipedia FR+EN</span>
-              <span className="builtin-chip"><span className="dot-green" />Validation téléphone</span>
-              <span className="builtin-chip"><span className="dot-green" />Géolocalisation IP</span>
-              <span className="builtin-chip"><span className="dot-green" />WHOIS Domaine</span>
-              <span className="builtin-chip"><span className="dot-green" />Recherche Email</span>
-              <span className="builtin-chip"><span className="dot-green" />Reverse Image</span>
-              <span className="builtin-chip"><span className="dot-green" />Décodeur</span>
-              <span className="builtin-chip"><span className="dot-green" />Username @</span>
-              <span className="builtin-chip" style={{ borderColor:'rgba(105,201,208,0.4)', color:'#69C9D0', background:'rgba(105,201,208,0.08)' }}><span className="dot-green" style={{ background:'#69C9D0' }} />TikTok OSINT</span>
-              {config.googleApiKey && <span className="builtin-chip"><span className="dot-green" />Google</span>}
-              <span className="builtin-chip" style={{ borderColor:'#f97316', color:'#ea580c', background:'rgba(249,115,22,0.08)' }}><span className="dot-green" style={{ background:'#f97316' }} />Shodan</span>
-              {config.brixhubKey && <span className="builtin-chip" style={{ borderColor:'rgba(59,130,246,0.4)', color:'#60a5fa', background:'rgba(59,130,246,0.08)' }}><span className="dot-green" style={{ background:'#3b82f6' }} />BrixHub</span>}
-              {config.customApis.map(a => <span key={a.name} className="builtin-chip"><span className="dot-green" />{a.name}</span>)}
-            </div>
-
-            {breachResult && <BreachResult data={breachResult} />}
-            {tiktokResult && <TikTokCard username={tiktokResult} />}
-            {usernameResult && <UsernameCard username={usernameResult} />}
-            {mcResult && <MinecraftResult data={mcResult} />}
-            {steamResult && <SteamResult data={steamResult} />}
-            {decoderResult && <DecoderCard input={decoderResult} />}
-            {emailResult && <EmailCard email={emailResult} />}
-            {emailResult && <SocialCheckCard email={emailResult} />}
-            {hudsonResult && <HudsonResult data={hudsonResult} />}
-            {brixhubResult && <BrixhubResult data={brixhubResult} />}
-            {imageResult && <ImageSearchCard url={imageResult} />}
-            {personResult && <PersonCard name={personResult} />}
-            {phoneResult && <PhoneCard phone={phoneResult} />}
-            {phoneResult && <MessagingCard phone={phoneResult} />}
-            {ipResult && <IPCard result={ipResult} />}
-            {shodanResult && <ShodanCard result={shodanResult} />}
-            {whoisResult && <WhoisCard result={whoisResult} />}
-
-            <div className="results-meta">
-              {loading
-                ? <span className="results-count loading-pulse">Recherche en cours…</span>
-                : !error && <span className="results-count">{results.length} résultat{results.length !== 1 ? 's' : ''} pour <b>"{query}"</b></span>
-              }
-              {!loading && results.length > 0 && (
-                <div className="source-chips">
-                  {[...new Set(results.map(r => r.source))].map(src => (
-                    <span key={src} className="source-chip">{src}</span>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {loading && (
-              <div className="results-list">
-                {[1, 2, 3].map(i => <div key={i} className="result-skeleton" style={{ height: i === 1 ? 110 : 95 }} />)}
+            {/* Source pills — only on Tout tab */}
+            {activeTab === 'tout' && pills.length > 0 && (
+              <div className="src-summary">
+                {pills.map(p => (
+                  <button key={p.key} className={`src-pill ${p.cls}`} onClick={() => p.tab && setActiveTab(p.tab)}>
+                    <span className="src-dot-sm" />
+                    {p.label}{p.detail ? ` · ${p.detail}` : ''}
+                  </button>
+                ))}
               </div>
             )}
 
-            {!loading && error && (
-              <div className="results-error">
-                <span className="error-icon">⚠</span>
-                <div>
-                  <div className="error-title">Erreur lors de la recherche</div>
-                  <div className="error-desc">{error}</div>
-                </div>
-              </div>
-            )}
+            {/* Content by tab */}
+            {(activeTab==='tout' || activeTab==='leaks')    && hasLeaks    && <LeaksContent />}
+            {(activeTab==='tout' || activeTab==='identite') && hasIdentite && <IdentiteContent />}
+            {(activeTab==='tout' || activeTab==='social')   && hasSocial   && <SocialContent />}
+            {(activeTab==='tout' || activeTab==='réseau')   && hasReseau   && <ReseauContent />}
+            {(activeTab==='tout' || activeTab==='web')                     && <WebContent />}
 
-            {!loading && !error && results.length === 0 && !phoneResult && !ipResult && !emailResult && !imageResult && !decoderResult && !usernameResult && !tiktokResult && (
-              <div className="results-empty">
-                <div className="empty-icon"><SearchIcon size={48} /></div>
-                <div className="empty-title">Aucun résultat</div>
-                <div className="empty-desc">Aucun résultat trouvé sur Wikipedia pour <b>"{query}"</b>. Essayez avec d'autres termes.</div>
-              </div>
-            )}
-
-            {!loading && !error && results.length > 0 && (
-              <div className="results-list">
-                {results.map(r => <ResultCard key={r.id} result={r} />)}
-              </div>
-            )}
+            {/* Empty state for non-tout tabs with no results yet */}
+            {activeTab==='leaks'    && !hasLeaks    && <div className="rtab-empty"><svg width="40" height="40" viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg><div className="rtab-empty-title">Aucune donnée</div></div>}
+            {activeTab==='identite' && !hasIdentite && <div className="rtab-empty"><svg width="40" height="40" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.5"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg><div className="rtab-empty-title">Aucun profil</div></div>}
+            {activeTab==='social'   && !hasSocial   && <div className="rtab-empty"><div className="rtab-empty-title">Aucune donnée sociale</div></div>}
+            {activeTab==='réseau'   && !hasReseau   && <div className="rtab-empty"><div className="rtab-empty-title">Aucune donnée réseau</div></div>}
           </div>
 
           <MobileNav activePage="results" onHome={onBack} onLeaderboard={onLeaderboard} onProfile={onProfile} onPatchnote={onPatchnote} onTheme={onTheme} />
