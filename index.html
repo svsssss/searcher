@@ -6152,11 +6152,11 @@ async function lookupBreach(query, forcedType = null) {
             )}
 
             {/* Content by tab */}
-            {(activeTab==='tout' || activeTab==='leaks')    && hasLeaks    && <LeaksContent />}
-            {(activeTab==='tout' || activeTab==='identite') && hasIdentite && <IdentiteContent />}
-            {(activeTab==='tout' || activeTab==='social')   && hasSocial   && <SocialContent />}
-            {(activeTab==='tout' || activeTab==='réseau')   && hasReseau   && <ReseauContent />}
-            {(activeTab==='tout' || activeTab==='web')                     && <WebContent />}
+            {(activeTab==='tout' || activeTab==='leaks')    && hasLeaks    && LeaksContent()}
+            {(activeTab==='tout' || activeTab==='identite') && hasIdentite && IdentiteContent()}
+            {(activeTab==='tout' || activeTab==='social')   && hasSocial   && SocialContent()}
+            {(activeTab==='tout' || activeTab==='réseau')   && hasReseau   && ReseauContent()}
+            {(activeTab==='tout' || activeTab==='web')                     && WebContent()}
 
             {/* Empty state for non-tout tabs with no results yet */}
             {activeTab==='leaks'    && !hasLeaks    && <div className="rtab-empty"><svg width="40" height="40" viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg><div className="rtab-empty-title">Aucune donnée</div></div>}
