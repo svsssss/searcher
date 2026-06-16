@@ -5540,63 +5540,54 @@ async function lookupBreach(query, forcedType = null) {
     function HudsonResult({ data }) {
       const [expanded, setExpanded] = React.useState(false);
       if (!data) return null;
-
-      const maskVal = v => {
-        if (!v || v.length <= 3) return '***';
-        return v.slice(0, 2) + '*'.repeat(Math.min(v.length - 2, 8)) + v.slice(-1);
-      };
+      const maskVal = v => { if (!v || v.length <= 3) return '***'; return v.slice(0,2) + '*'.repeat(Math.min(v.length-2,8)) + v.slice(-1); };
+      const S = { card:{ margin:'0 0 16px', borderRadius:16, border:'1px solid rgba(168,85,247,0.25)', overflow:'hidden', fontFamily:"'Geist',sans-serif" }, hdr:{ padding:'14px 20px', background:'rgba(168,85,247,0.07)', borderBottom:'1px solid rgba(168,85,247,0.15)', display:'flex', alignItems:'center', gap:12 }, body:{ padding:'14px', display:'flex', flexDirection:'column', gap:10 } };
 
       if (data.loading) return (
-        <div style={{ margin:'0 0 16px', padding:'16px 20px', borderRadius:14, background:'rgba(139,92,246,0.06)', border:'1px solid rgba(139,92,246,0.18)', fontFamily:"'Geist',sans-serif", display:'flex', alignItems:'center', gap:10, color:'var(--ink-mute)', fontSize:13 }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ animation:'spin 1s linear infinite', flexShrink:0 }}><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeDasharray="60" strokeDashoffset="20"/></svg>
-          Recherche dans les logs infostealers…
+        <div style={{ ...S.card, display:'flex', alignItems:'center', gap:12, padding:'16px 20px' }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style={{ animation:'spin 1s linear infinite', flexShrink:0, color:'#a855f7' }}><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeDasharray="60" strokeDashoffset="20"/></svg>
+          <span style={{ fontSize:13, color:'var(--ink-mute)' }}>Scan infostealers en cours…</span>
         </div>
       );
-
-      if (data.error) return (
-        <div style={{ margin:'0 0 16px', padding:'14px 18px', borderRadius:14, background:'rgba(139,92,246,0.06)', border:'1px solid rgba(139,92,246,0.15)', fontFamily:"'Geist',sans-serif", fontSize:13, color:'var(--ink-mute)' }}>
-          🦠 Aucun log infostealer pour <strong style={{ color:'var(--ink)' }}>{data.query}</strong>
-        </div>
-      );
+      if (data.error) return null;
 
       const stealers = data.stealers || [];
       const shown = expanded ? stealers : stealers.slice(0, 2);
-
       return (
-        <div style={{ margin:'0 0 16px', borderRadius:14, border:'1px solid rgba(139,92,246,0.3)', overflow:'hidden', fontFamily:"'Geist',sans-serif" }}>
-          <div style={{ padding:'14px 18px', background:'rgba(139,92,246,0.08)', borderBottom:'1px solid rgba(139,92,246,0.2)', display:'flex', alignItems:'center', gap:12 }}>
-            <span style={{ fontSize:18 }}>🦠</span>
+        <div style={S.card}>
+          <div style={S.hdr}>
+            <div style={{ width:36, height:36, borderRadius:10, background:'rgba(168,85,247,0.12)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>🦠</div>
             <div style={{ flex:1 }}>
-              <div style={{ fontWeight:700, fontSize:14, color:'var(--ink)' }}>
-                {stealers.length} infection{stealers.length > 1 ? 's' : ''} infostealer détectée{stealers.length > 1 ? 's' : ''}
-              </div>
-              <div style={{ fontSize:11, color:'var(--ink-mute)', marginTop:2 }}>Hudson Rock · Cavalier OSINT · {data.query}</div>
+              <div style={{ fontWeight:700, fontSize:14, color:'var(--ink)', letterSpacing:'-0.02em' }}>{stealers.length} infection{stealers.length>1?'s':''} infostealer</div>
+              <div style={{ fontSize:11, color:'var(--ink-mute)', marginTop:2 }}>Hudson Rock · {data.query}</div>
             </div>
-            <span style={{ padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:'rgba(139,92,246,0.2)', color:'#a78bfa', fontFamily:"'JetBrains Mono',monospace", letterSpacing:'0.04em' }}>STEALER</span>
+            <span style={{ padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:700, background:'rgba(168,85,247,0.15)', color:'#a855f7', letterSpacing:'0.04em' }}>STEALER</span>
           </div>
-
-          <div style={{ padding:'12px 18px', display:'flex', flexDirection:'column', gap:10 }}>
+          <div style={S.body}>
             {shown.map((s, i) => (
-              <div key={i} style={{ padding:'12px 14px', borderRadius:10, background:'var(--sb-bg)', border:'1px solid var(--rule)' }}>
-                <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:10 }}>
-                  <span style={{ padding:'2px 9px', borderRadius:99, fontSize:11, background:'rgba(239,68,68,0.12)', color:'#f87171', border:'1px solid rgba(239,68,68,0.25)', fontWeight:600 }}>{s.stealer_family || 'Inconnu'}</span>
-                  {s.date_compromised && <span style={{ padding:'2px 9px', borderRadius:99, fontSize:11, background:'var(--bg)', color:'var(--ink-mute)', border:'1px solid var(--rule)' }}>📅 {s.date_compromised}</span>}
-                  {s.operating_system && <span style={{ padding:'2px 9px', borderRadius:99, fontSize:11, background:'var(--bg)', color:'var(--ink-mute)', border:'1px solid var(--rule)' }}>💻 {s.operating_system}</span>}
-                  {s.country && <span style={{ padding:'2px 9px', borderRadius:99, fontSize:11, background:'var(--bg)', color:'var(--ink-mute)', border:'1px solid var(--rule)' }}>🌍 {s.country}</span>}
+              <div key={i} style={{ borderRadius:12, border:'1px solid var(--rule)', overflow:'hidden' }}>
+                {/* Infection header */}
+                <div style={{ padding:'10px 14px', background:'var(--sb-bg)', display:'flex', flexWrap:'wrap', gap:6, alignItems:'center' }}>
+                  <span style={{ padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:'rgba(239,68,68,0.1)', color:'#ef4444', border:'1px solid rgba(239,68,68,0.2)' }}>{s.stealer_family||'Inconnu'}</span>
+                  {s.date_compromised && <span style={{ padding:'3px 10px', borderRadius:99, fontSize:11, color:'var(--ink-mute)', border:'1px solid var(--rule)', background:'var(--bg)' }}>📅 {s.date_compromised}</span>}
+                  {s.operating_system && <span style={{ padding:'3px 10px', borderRadius:99, fontSize:11, color:'var(--ink-mute)', border:'1px solid var(--rule)', background:'var(--bg)' }}>{s.operating_system}</span>}
+                  {s.country && <span style={{ padding:'3px 10px', borderRadius:99, fontSize:11, color:'var(--ink-mute)', border:'1px solid var(--rule)', background:'var(--bg)' }}>🌍 {s.country}</span>}
+                  {s.total_credentials && <span style={{ marginLeft:'auto', padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:'rgba(239,68,68,0.08)', color:'#ef4444', border:'1px solid rgba(239,68,68,0.18)' }}>{s.total_credentials} creds volés</span>}
                 </div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6, fontSize:12 }}>
-                  {s.ip && <div style={{ padding:'6px 10px', borderRadius:8, background:'var(--bg)', border:'1px solid var(--rule)' }}><span style={{ color:'var(--ink-mute)' }}>IP : </span><span style={{ fontFamily:"'JetBrains Mono',monospace", color:'var(--ink)' }}>{s.ip}</span></div>}
-                  {s.computer_name && <div style={{ padding:'6px 10px', borderRadius:8, background:'var(--bg)', border:'1px solid var(--rule)' }}><span style={{ color:'var(--ink-mute)' }}>PC : </span><span style={{ fontFamily:"'JetBrains Mono',monospace", color:'var(--ink)' }}>{s.computer_name}</span></div>}
-                  {s.username && <div style={{ padding:'6px 10px', borderRadius:8, background:'var(--bg)', border:'1px solid var(--rule)' }}><span style={{ color:'var(--ink-mute)' }}>User : </span><span style={{ fontFamily:"'JetBrains Mono',monospace", color:'var(--ink)' }}>{s.username}</span></div>}
-                  {s.total_credentials && <div style={{ padding:'6px 10px', borderRadius:8, background:'rgba(239,68,68,0.07)', border:'1px solid rgba(239,68,68,0.2)' }}><span style={{ color:'var(--ink-mute)' }}>Creds volés : </span><span style={{ fontFamily:"'JetBrains Mono',monospace", color:'#f87171', fontWeight:700 }}>{s.total_credentials}</span></div>}
+                {/* Info grid */}
+                <div style={{ padding:'10px 14px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:6 }}>
+                  {s.ip && <div style={{ padding:'7px 10px', borderRadius:8, background:'var(--sb-bg)', border:'1px solid var(--rule)' }}><div style={{ fontSize:10, color:'var(--ink-mute)', marginBottom:2 }}>IP</div><div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:12, color:'var(--ink)', fontWeight:500 }}>{s.ip}</div></div>}
+                  {s.computer_name && <div style={{ padding:'7px 10px', borderRadius:8, background:'var(--sb-bg)', border:'1px solid var(--rule)' }}><div style={{ fontSize:10, color:'var(--ink-mute)', marginBottom:2 }}>Machine</div><div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:12, color:'var(--ink)', fontWeight:500 }}>{s.computer_name}</div></div>}
+                  {s.username && <div style={{ padding:'7px 10px', borderRadius:8, background:'var(--sb-bg)', border:'1px solid var(--rule)' }}><div style={{ fontSize:10, color:'var(--ink-mute)', marginBottom:2 }}>Username</div><div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:12, color:'var(--ink)', fontWeight:500 }}>{s.username}</div></div>}
                 </div>
-                {(s.top_logins?.length > 0 || s.top_passwords?.length > 0) && (
-                  <div style={{ marginTop:8, display:'flex', flexDirection:'column', gap:4 }}>
-                    {s.top_logins?.slice(0,3).map((l,j) => (
-                      <div key={j} style={{ display:'flex', alignItems:'center', gap:8, padding:'5px 10px', borderRadius:7, background:'var(--bg)', border:'1px solid var(--rule)', fontSize:11 }}>
-                        <span style={{ color:'var(--ink-mute)', flexShrink:0 }}>login</span>
+                {/* Logins */}
+                {s.top_logins?.length > 0 && (
+                  <div style={{ borderTop:'1px solid var(--rule)', padding:'8px 14px', display:'flex', flexDirection:'column', gap:4 }}>
+                    {s.top_logins.slice(0,3).map((l,j) => (
+                      <div key={j} style={{ display:'flex', alignItems:'center', gap:10, padding:'6px 10px', borderRadius:8, background:'rgba(239,68,68,0.04)', border:'1px solid rgba(239,68,68,0.12)', fontSize:12 }}>
+                        <span style={{ color:'var(--ink-mute)', fontSize:10, flexShrink:0, fontFamily:"'JetBrains Mono',monospace" }}>LOGIN</span>
                         <span style={{ fontFamily:"'JetBrains Mono',monospace", color:'var(--ink)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{l}</span>
-                        {s.top_passwords?.[j] && <span style={{ fontFamily:"'JetBrains Mono',monospace", color:'#ef4444', flexShrink:0, opacity:0.8 }}>{maskVal(s.top_passwords[j])}</span>}
+                        {s.top_passwords?.[j] && <span style={{ fontFamily:"'JetBrains Mono',monospace", color:'#ef4444', fontWeight:700, flexShrink:0 }}>{maskVal(s.top_passwords[j])}</span>}
                       </div>
                     ))}
                   </div>
@@ -5604,8 +5595,8 @@ async function lookupBreach(query, forcedType = null) {
               </div>
             ))}
             {stealers.length > 2 && (
-              <button onClick={() => setExpanded(e => !e)} style={{ background:'none', border:'none', color:'var(--blue)', fontSize:12, cursor:'none', fontFamily:"'Geist',sans-serif", padding:0, textAlign:'left' }}>
-                {expanded ? '▲ Voir moins' : `▼ Voir les ${stealers.length - 2} autres infections`}
+              <button onClick={() => setExpanded(e => !e)} style={{ background:'none', border:'1px solid var(--rule)', borderRadius:8, color:'var(--ink-mute)', fontSize:12, cursor:'none', fontFamily:"'Geist',sans-serif", padding:'8px 14px', textAlign:'center', transition:'all 0.15s' }}>
+                {expanded ? '↑ Voir moins' : `↓ Voir ${stealers.length - 2} autre${stealers.length-2>1?'s':''} infection${stealers.length-2>1?'s':''}`}
               </button>
             )}
           </div>
@@ -5616,136 +5607,99 @@ async function lookupBreach(query, forcedType = null) {
     // ── Breach Result ─────────────────────────────────────────────────────────
     function BreachResult({ data }) {
       if (!data) return null;
+      const [expandedRecs, setExpandedRecs] = React.useState(false);
 
-      const maskPass = p => {
-        if (!p || p.length <= 3) return '***';
-        return p.slice(0, 2) + '*'.repeat(Math.min(p.length - 2, 7)) + p.slice(-1);
-      };
-
-      const fieldColor = k => k === 'password' ? '#f87171' : k === 'email' ? '#818cf8' : k === 'ip' ? '#34d399' : k === 'username' ? '#fbbf24' : 'var(--ink)';
+      const fColor = k => k==='password'?'#ef4444':k==='email'?'#818cf8':k==='ip'?'#34d399':k==='username'?'#f59e0b':'var(--ink)';
+      const fBg    = k => k==='password'?'rgba(239,68,68,0.06)':k==='email'?'rgba(129,140,248,0.06)':'transparent';
+      const copy   = v => navigator.clipboard.writeText(String(v)).catch(()=>{});
 
       if (data.loading) return (
-        <div style={{ margin:'0 0 16px', padding:'14px 16px', border:'1px solid rgba(192,132,252,0.2)', fontFamily:"'JetBrains Mono',monospace", display:'flex', alignItems:'center', gap:10, color:'rgba(192,132,252,0.7)', fontSize:12 }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ animation:'spin 1s linear infinite', flexShrink:0 }}><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeDasharray="60" strokeDashoffset="20"/></svg>
-          BREACH LOOKUP IN PROGRESS…
+        <div style={{ margin:'0 0 16px', padding:'16px 20px', borderRadius:16, border:'1px solid rgba(239,68,68,0.15)', display:'flex', alignItems:'center', gap:12, fontFamily:"'Geist',sans-serif" }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style={{ animation:'spin 1s linear infinite', flexShrink:0, color:'#ef4444' }}><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeDasharray="60" strokeDashoffset="20"/></svg>
+          <span style={{ fontSize:13, color:'var(--ink-mute)' }}>Recherche dans les bases de données de leaks…</span>
         </div>
       );
 
-      const rep = data.rep;
-      const hasBvip = data.bvip && !data.bvip.error && data.bvip.total > 0;
-      const bvipError = data.bvip?.error;
-      const fieldType = (data.bvip?.fields || ['email'])[0].toUpperCase();
+      const rep      = data.rep;
+      const hasBvip  = data.bvip && !data.bvip.error && data.bvip.total > 0;
+      const bvipErr  = data.bvip?.error;
+      const fieldType = (data.bvip?.fields || ['email'])[0];
 
-      // flat list of all records across sources
       const allRecords = hasBvip
         ? Object.entries(data.bvip.bySource).flatMap(([src, { categories, records }]) =>
-            records.map(r => ({ ...r, _src: src, _cats: Array.isArray(categories) ? categories : categories ? [categories] : [] }))
+            records.map(r => ({ ...r, _src:src, _cats: Array.isArray(categories)?categories:categories?[categories]:[] }))
           )
         : [];
 
-      return (
-        <div style={{ margin:'0 0 16px', fontFamily:"'JetBrains Mono',monospace" }}>
+      const SHOW_RECS = 3;
+      const shownRecs = expandedRecs ? allRecords : allRecords.slice(0, SHOW_RECS);
 
-          {/* ── BreachVIP ── */}
-          <div style={{ border:'1px solid rgba(192,132,252,0.25)', marginBottom: (data.leakcheck || data.scylla || rep) ? 8 : 0 }}>
-            {/* Header bar */}
-            <div style={{ padding:'9px 14px', borderBottom:'1px solid rgba(192,132,252,0.18)', display:'flex', alignItems:'center', justifyContent:'space-between', background:'rgba(192,132,252,0.06)' }}>
-              <span style={{ fontSize:11, color:'rgba(192,132,252,0.8)', letterSpacing:'0.08em' }}>
-                BREACHVIP <span style={{ color:'rgba(192,132,252,0.4)' }}>|</span> {fieldType} SEARCH
-              </span>
-              <span style={{ fontSize:11, display:'flex', alignItems:'center', gap:6 }}>
-                {bvipError
-                  ? <span style={{ color:'#f87171', letterSpacing:'0.04em' }}>● CORS ERROR</span>
-                  : hasBvip
-                    ? <span style={{ color:'#a78bfa' }}>● {data.bvip.total} result{data.bvip.total > 1 ? 's' : ''} found</span>
-                    : <span style={{ color:'rgba(192,132,252,0.4)' }}>● 0 results found</span>
-                }
-              </span>
-            </div>
-            {/* Query line */}
-            <div style={{ padding:'6px 14px', borderBottom:'1px solid rgba(192,132,252,0.1)', fontSize:10, color:'rgba(192,132,252,0.45)' }}>
-              Query <span style={{ color:'rgba(192,132,252,0.7)' }}>{data.query}</span>
+      return (
+        <div style={{ margin:'0 0 16px', display:'flex', flexDirection:'column', gap:10, fontFamily:"'Geist',sans-serif" }}>
+
+          {/* ── BreachVIP main card ── */}
+          <div style={{ borderRadius:16, border:`1px solid ${hasBvip?'rgba(239,68,68,0.3)':'rgba(239,68,68,0.12)'}`, overflow:'hidden' }}>
+            {/* Header */}
+            <div style={{ padding:'14px 20px', background: hasBvip?'rgba(239,68,68,0.06)':'var(--sb-bg)', borderBottom:`1px solid ${hasBvip?'rgba(239,68,68,0.12)':'var(--rule)'}`, display:'flex', alignItems:'center', gap:12 }}>
+              <div style={{ width:36, height:36, borderRadius:10, background: hasBvip?'rgba(239,68,68,0.12)':'rgba(107,114,128,0.1)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:17, flexShrink:0 }}>{hasBvip?'🔓':'🔒'}</div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontWeight:700, fontSize:14, color:'var(--ink)', letterSpacing:'-0.02em' }}>
+                  {bvipErr ? 'Erreur BreachVIP' : hasBvip ? `${data.bvip.total} entrée${data.bvip.total>1?'s':''} compromise${data.bvip.total>1?'s':''}` : 'Aucun leak détecté'}
+                </div>
+                <div style={{ fontSize:11, color:'var(--ink-mute)', marginTop:2 }}>BreachVIP · {fieldType} · {data.query}</div>
+              </div>
+              {hasBvip && <span style={{ padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:700, background:'rgba(239,68,68,0.12)', color:'#ef4444', border:'1px solid rgba(239,68,68,0.2)', letterSpacing:'0.03em' }}>COMPROMIS</span>}
+              {!hasBvip && !bvipErr && <span style={{ padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:700, background:'rgba(22,163,74,0.1)', color:'#16a34a', border:'1px solid rgba(22,163,74,0.2)', letterSpacing:'0.03em' }}>PROPRE</span>}
             </div>
 
             {/* Records */}
-            {hasBvip && allRecords.map((rec, idx) => {
-              const fields = Object.entries(rec).filter(([k]) => !k.startsWith('_') && k !== 'source' && k !== 'categories');
-              const title = rec.email || rec.username || rec._src;
-              return (
-                <div key={idx} style={{ borderTop: idx > 0 ? '1px solid rgba(192,132,252,0.1)' : 'none' }}>
-                  {/* Record title row */}
-                  <div style={{ padding:'8px 14px', display:'flex', alignItems:'center', gap:10, background:'rgba(192,132,252,0.04)', borderBottom:'1px solid rgba(192,132,252,0.1)' }}>
-                    <span style={{ fontSize:11, color:'rgba(192,132,252,0.4)', minWidth:24 }}>{String(idx + 1).padStart(2, '0')}</span>
-                    <span style={{ fontSize:13, fontWeight:700, color:'var(--ink)', letterSpacing:'0.03em', textTransform:'uppercase', flex:1, wordBreak:'break-all' }}>{title}</span>
-                    <span style={{ fontSize:10, color:'#c084fc', background:'rgba(192,132,252,0.12)', border:'1px solid rgba(192,132,252,0.3)', padding:'1px 8px', letterSpacing:'0.04em', textTransform:'uppercase', flexShrink:0 }}>{rec._src}</span>
-                    {rec._cats.map((c, j) => (
-                      <span key={j} style={{ fontSize:10, color:'rgba(192,132,252,0.6)', background:'rgba(192,132,252,0.06)', border:'1px solid rgba(192,132,252,0.2)', padding:'1px 7px', letterSpacing:'0.04em', textTransform:'uppercase' }}>{c}</span>
-                    ))}
-                  </div>
-                  {/* Field table */}
-                  <div>
-                    {fields.map(([k, v]) => (
-                      <div key={k} style={{ display:'grid', gridTemplateColumns:'110px 1fr', borderBottom:'1px solid rgba(192,132,252,0.07)' }}>
-                        <span style={{ padding:'6px 14px', fontSize:10, color:'rgba(192,132,252,0.55)', textTransform:'uppercase', letterSpacing:'0.07em', borderRight:'1px solid rgba(192,132,252,0.1)', background:'rgba(192,132,252,0.03)' }}>{k}</span>
-                        <span style={{ padding:'6px 14px', fontSize:12, color: fieldColor(k), wordBreak:'break-all', fontWeight: k === 'password' ? 600 : 400 }}>{String(v)}</span>
+            {hasBvip && (
+              <div style={{ display:'flex', flexDirection:'column' }}>
+                {shownRecs.map((rec, idx) => {
+                  const fields = Object.entries(rec).filter(([k]) => !k.startsWith('_') && k!=='source' && k!=='categories');
+                  const title  = rec.email || rec.username || rec._src;
+                  return (
+                    <div key={idx} style={{ borderBottom: idx<shownRecs.length-1?'1px solid var(--rule)':'none' }}>
+                      {/* Record title */}
+                      <div style={{ padding:'10px 20px', background:'rgba(239,68,68,0.02)', display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', borderBottom:'1px solid rgba(239,68,68,0.06)' }}>
+                        <span style={{ fontSize:10, color:'#ef4444', fontFamily:"'JetBrains Mono',monospace", fontWeight:700, background:'rgba(239,68,68,0.1)', padding:'2px 7px', borderRadius:6 }}>#{String(idx+1).padStart(2,'0')}</span>
+                        <span style={{ fontSize:13, fontWeight:600, color:'var(--ink)', flex:1, wordBreak:'break-all' }}>{title}</span>
+                        <span style={{ fontSize:10, color:'var(--ink-mute)', fontFamily:"'JetBrains Mono',monospace", background:'var(--sb-bg)', padding:'2px 8px', borderRadius:6, border:'1px solid var(--rule)' }}>{rec._src}</span>
+                        {rec._cats.slice(0,2).map((c,j) => <span key={j} style={{ fontSize:10, color:'#818cf8', background:'rgba(129,140,248,0.08)', padding:'2px 8px', borderRadius:6, border:'1px solid rgba(129,140,248,0.2)', fontFamily:"'JetBrains Mono',monospace" }}>{c}</span>)}
                       </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-
-            {!hasBvip && !bvipError && (
-              <div style={{ padding:'12px 14px', fontSize:11, color:'rgba(192,132,252,0.4)' }}>No breach records found.</div>
+                      {/* Fields */}
+                      <div style={{ padding:'8px 20px 12px', display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))', gap:5 }}>
+                        {fields.map(([k,v]) => (
+                          <div key={k} onClick={() => copy(v)} style={{ padding:'7px 10px', borderRadius:8, background: fBg(k)||'var(--sb-bg)', border:`1px solid ${k==='password'?'rgba(239,68,68,0.15)':k==='email'?'rgba(129,140,248,0.15)':'var(--rule)'}`, cursor:'none', display:'flex', flexDirection:'column', gap:2 }}>
+                            <span style={{ fontSize:9, color:'var(--ink-mute)', textTransform:'uppercase', letterSpacing:'0.06em', fontFamily:"'JetBrains Mono',monospace" }}>{k}</span>
+                            <span style={{ fontSize:12, color:fColor(k), wordBreak:'break-all', fontWeight: k==='password'?700:400, fontFamily: k==='password'||k==='ip'?"'JetBrains Mono',monospace":'inherit' }}>{String(v)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+                {allRecords.length > SHOW_RECS && (
+                  <button onClick={() => setExpandedRecs(e => !e)} style={{ margin:'0 14px 12px', padding:'8px', borderRadius:8, background:'none', border:'1px solid var(--rule)', color:'var(--ink-mute)', fontSize:12, cursor:'none', fontFamily:"'Geist',sans-serif", textAlign:'center' }}>
+                    {expandedRecs ? '↑ Voir moins' : `↓ Afficher les ${allRecords.length-SHOW_RECS} autres entrées`}
+                  </button>
+                )}
+              </div>
             )}
           </div>
 
-          {/* ── EmailRep ── */}
-          {rep && (
-            <div style={{ border:'1px solid rgba(139,92,246,0.2)', marginBottom:8 }}>
-              <div style={{ padding:'7px 14px', borderBottom:'1px solid rgba(139,92,246,0.15)', background:'rgba(139,92,246,0.05)', fontSize:11, color:'rgba(139,92,246,0.7)', letterSpacing:'0.08em' }}>EMAILREP</div>
-              <div style={{ padding:'8px 14px', display:'flex', flexWrap:'wrap', gap:6 }}>
-                {rep.details?.credentials_leaked && <span style={{ padding:'2px 8px', fontSize:10, background:'rgba(239,68,68,0.1)', color:'#f87171', border:'1px solid rgba(239,68,68,0.25)', letterSpacing:'0.04em' }}>CREDENTIALS LEAKED</span>}
-                {rep.details?.data_breach && <span style={{ padding:'2px 8px', fontSize:10, background:'rgba(249,115,22,0.1)', color:'#fb923c', border:'1px solid rgba(249,115,22,0.25)', letterSpacing:'0.04em' }}>DATA BREACH</span>}
-                {rep.details?.spam && <span style={{ padding:'2px 8px', fontSize:10, background:'rgba(239,68,68,0.1)', color:'#f87171', border:'1px solid rgba(239,68,68,0.25)', letterSpacing:'0.04em' }}>SPAM</span>}
-                {rep.details?.disposable && <span style={{ padding:'2px 8px', fontSize:10, background:'rgba(245,158,11,0.1)', color:'#fbbf24', border:'1px solid rgba(245,158,11,0.25)', letterSpacing:'0.04em' }}>DISPOSABLE</span>}
-                {rep.details?.malicious_activity && <span style={{ padding:'2px 8px', fontSize:10, background:'rgba(239,68,68,0.1)', color:'#f87171', border:'1px solid rgba(239,68,68,0.25)', letterSpacing:'0.04em' }}>MALICIOUS</span>}
-                {!rep.details?.credentials_leaked && !rep.details?.data_breach && !rep.details?.spam && <span style={{ padding:'2px 8px', fontSize:10, background:'rgba(34,197,94,0.1)', color:'#4ade80', border:'1px solid rgba(34,197,94,0.25)', letterSpacing:'0.04em' }}>CLEAN · {rep.reputation}</span>}
-                {rep.details?.first_seen && <span style={{ padding:'2px 8px', fontSize:10, color:'rgba(192,132,252,0.5)', border:'1px solid rgba(192,132,252,0.15)', letterSpacing:'0.04em' }}>FIRST SEEN {rep.details.first_seen}</span>}
-              </div>
-            </div>
-          )}
-
-          {/* ── LeakCheck ── */}
-          {data.leakcheck && (
-            <div style={{ border:'1px solid rgba(245,158,11,0.2)', marginBottom:8 }}>
-              <div style={{ padding:'7px 14px', borderBottom:'1px solid rgba(245,158,11,0.15)', background:'rgba(245,158,11,0.05)', fontSize:11, color:'rgba(245,158,11,0.7)', letterSpacing:'0.08em', display:'flex', justifyContent:'space-between' }}>
-                <span>LEAKCHECK</span>
-                <span style={{ color:'#fbbf24' }}>{data.leakcheck.found} SOURCE{data.leakcheck.found > 1 ? 'S' : ''}</span>
-              </div>
-              <div style={{ padding:'8px 14px', display:'flex', flexWrap:'wrap', gap:5 }}>
-                {data.leakcheck.sources.map((src, i) => (
-                  <span key={i} style={{ padding:'2px 8px', fontSize:10, background:'rgba(245,158,11,0.07)', color:'#fbbf24', border:'1px solid rgba(245,158,11,0.2)', letterSpacing:'0.04em' }}>{src}</span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ── Scylla ── */}
-          {data.scylla && (
-            <div style={{ border:'1px solid rgba(239,68,68,0.2)' }}>
-              <div style={{ padding:'7px 14px', borderBottom:'1px solid rgba(239,68,68,0.15)', background:'rgba(239,68,68,0.05)', fontSize:11, color:'rgba(239,68,68,0.7)', letterSpacing:'0.08em', display:'flex', justifyContent:'space-between' }}>
-                <span>SCYLLA.SH</span>
-                <span style={{ color:'#f87171' }}>{data.scylla.total.toLocaleString()} ENTRIES</span>
-              </div>
-              <div>
-                {data.scylla.hits.slice(0, 8).map((h, i) => (
-                  <div key={i} style={{ display:'grid', gridTemplateColumns:'1fr auto', borderBottom:'1px solid rgba(239,68,68,0.08)', padding:'6px 14px' }}>
-                    <span style={{ fontSize:12, color:'var(--ink)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{h.email || h.username || '—'}</span>
-                    {h.password && <span style={{ fontSize:12, color:'#f87171', fontWeight:600 }}>{h.password}</span>}
-                    {!h.password && h.hash && <span style={{ fontSize:10, color:'rgba(192,132,252,0.45)' }}>HASH</span>}
-                  </div>
-                ))}
+          {/* ── Sources complémentaires ── */}
+          {(rep || data.leakcheck || data.scylla) && (
+            <div style={{ borderRadius:12, border:'1px solid var(--rule)', overflow:'hidden' }}>
+              <div style={{ padding:'10px 16px', background:'var(--sb-bg)', borderBottom:'1px solid var(--rule)', fontSize:11, color:'var(--ink-mute)', fontFamily:"'JetBrains Mono',monospace", letterSpacing:'0.06em' }}>SOURCES COMPLÉMENTAIRES</div>
+              <div style={{ padding:'10px 16px', display:'flex', flexWrap:'wrap', gap:6 }}>
+                {rep?.details?.credentials_leaked && <span style={{ padding:'4px 10px', borderRadius:99, fontSize:11, fontWeight:600, background:'rgba(239,68,68,0.1)', color:'#ef4444', border:'1px solid rgba(239,68,68,0.2)' }}>Credentials leaked</span>}
+                {rep?.details?.data_breach && <span style={{ padding:'4px 10px', borderRadius:99, fontSize:11, fontWeight:600, background:'rgba(249,115,22,0.1)', color:'#f97316', border:'1px solid rgba(249,115,22,0.2)' }}>Data breach</span>}
+                {rep?.details?.spam && <span style={{ padding:'4px 10px', borderRadius:99, fontSize:11, fontWeight:600, background:'rgba(239,68,68,0.1)', color:'#ef4444', border:'1px solid rgba(239,68,68,0.2)' }}>Spam</span>}
+                {rep?.details?.disposable && <span style={{ padding:'4px 10px', borderRadius:99, fontSize:11, fontWeight:600, background:'rgba(245,158,11,0.1)', color:'#f59e0b', border:'1px solid rgba(245,158,11,0.2)' }}>Email jetable</span>}
+                {rep?.details?.first_seen && <span style={{ padding:'4px 10px', borderRadius:99, fontSize:11, background:'var(--bg)', color:'var(--ink-mute)', border:'1px solid var(--rule)' }}>Vu depuis {rep.details.first_seen}</span>}
+                {data.leakcheck && <span style={{ padding:'4px 10px', borderRadius:99, fontSize:11, fontWeight:600, background:'rgba(245,158,11,0.1)', color:'#f59e0b', border:'1px solid rgba(245,158,11,0.2)' }}>LeakCheck · {data.leakcheck.found} source{data.leakcheck.found>1?'s':''}</span>}
+                {data.scylla && <span style={{ padding:'4px 10px', borderRadius:99, fontSize:11, fontWeight:600, background:'rgba(239,68,68,0.1)', color:'#ef4444', border:'1px solid rgba(239,68,68,0.2)' }}>Scylla · {data.scylla.total.toLocaleString()} entrées</span>}
               </div>
             </div>
           )}
@@ -5880,90 +5834,129 @@ async function lookupBreach(query, forcedType = null) {
 
     // ── BrixHub Result ────────────────────────────────────────────────────────
     function BrixhubResult({ data }) {
-      const [open, setOpen] = useState(true);
+      const [expanded, setExpanded] = React.useState(false);
       if (!data) return null;
-      const COL = '59,130,246';
-      const borderBase = `rgba(${COL},0.22)`;
-      const hdrBg = `rgba(${COL},0.06)`;
-      const hdrColor = `rgba(${COL},0.85)`;
-      const rowBorder = `rgba(${COL},0.09)`;
+
+      const fStyle = label => {
+        const s = label.toLowerCase();
+        if (['iban','nir','siret'].some(x => s.includes(x))) return { color:'#f59e0b', bg:'rgba(245,158,11,0.06)', border:'rgba(245,158,11,0.2)' };
+        if (s==='email') return { color:'#818cf8', bg:'rgba(129,140,248,0.06)', border:'rgba(129,140,248,0.2)' };
+        if (s==='ip') return { color:'#34d399', bg:'rgba(52,211,153,0.06)', border:'rgba(52,211,153,0.2)' };
+        if (['discord','steam','xbox','fivem'].some(x => s.includes(x))) return { color:'#60a5fa', bg:'rgba(96,165,250,0.06)', border:'rgba(96,165,250,0.18)' };
+        return { color:'var(--ink)', bg:'var(--sb-bg)', border:'var(--rule)' };
+      };
 
       if (data.loading) return (
-        <div style={{ border:`1px solid ${borderBase}`, marginBottom:12, fontFamily:"'JetBrains Mono',monospace" }}>
-          <div style={{ padding:'7px 14px', background:hdrBg, fontSize:11, color:`rgba(${COL},0.45)`, letterSpacing:'0.08em' }}>BRIXHUB · CHARGEMENT…</div>
+        <div style={{ margin:'0 0 16px', padding:'16px 20px', borderRadius:16, border:'1px solid rgba(59,130,246,0.15)', display:'flex', alignItems:'center', gap:12, fontFamily:"'Geist',sans-serif" }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style={{ animation:'spin 1s linear infinite', flexShrink:0, color:'#3b82f6' }}><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeDasharray="60" strokeDashoffset="20"/></svg>
+          <span style={{ fontSize:13, color:'var(--ink-mute)' }}>Recherche dans BrixHub…</span>
         </div>
       );
-      if (data.error) return (
-        <div style={{ border:`1px solid rgba(${COL},0.12)`, marginBottom:12, fontFamily:"'JetBrains Mono',monospace" }}>
-          <div style={{ padding:'7px 14px', background:hdrBg, fontSize:11, color:`rgba(${COL},0.4)`, letterSpacing:'0.08em' }}>BRIXHUB · {data.error}</div>
-        </div>
-      );
+      if (data.error) return null;
 
       const { results, meta } = data;
-      const total = meta.total || results.length;
+      const total   = meta.total || results.length;
+      const SHOW    = 2;
+      const shown   = expanded ? results : results.slice(0, SHOW);
+
       return (
-        <div style={{ border:`1px solid ${borderBase}`, marginBottom:12, fontFamily:"'JetBrains Mono',monospace" }}>
-          <div onClick={() => setOpen(p => !p)} style={{ padding:'7px 14px', borderBottom: open ? `1px solid ${rowBorder}` : 'none', background:hdrBg, fontSize:11, color:hdrColor, letterSpacing:'0.08em', display:'flex', justifyContent:'space-between', cursor:'pointer', userSelect:'none' }}>
-            <span>BRIXHUB · {total} PROFIL{total > 1 ? 'S' : ''}{meta.took_ms ? ` · ${meta.took_ms}ms` : ''}</span>
-            <span style={{ fontSize:9 }}>{open ? '▲' : '▼'}</span>
+        <div style={{ margin:'0 0 16px', borderRadius:16, border:'1px solid rgba(59,130,246,0.25)', overflow:'hidden', fontFamily:"'Geist',sans-serif" }}>
+          {/* Header */}
+          <div style={{ padding:'14px 20px', background:'rgba(59,130,246,0.06)', borderBottom:'1px solid rgba(59,130,246,0.12)', display:'flex', alignItems:'center', gap:12 }}>
+            <div style={{ width:36, height:36, borderRadius:10, background:'rgba(59,130,246,0.12)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>🗃️</div>
+            <div style={{ flex:1 }}>
+              <div style={{ fontWeight:700, fontSize:14, color:'var(--ink)', letterSpacing:'-0.02em' }}>{total} profil{total>1?'s':''} trouvé{total>1?'s':''}</div>
+              <div style={{ fontSize:11, color:'var(--ink-mute)', marginTop:2 }}>BrixHub{meta.took_ms ? ` · ${meta.took_ms}ms` : ''}</div>
+            </div>
+            <span style={{ padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:700, background:'rgba(59,130,246,0.12)', color:'#3b82f6', border:'1px solid rgba(59,130,246,0.2)', letterSpacing:'0.03em' }}>ID MATRIX</span>
           </div>
-          {open && results.map((r, i) => {
-            const conf = r._confidence;
-            const confColor = conf >= 80 ? '#4ade80' : conf >= 50 ? '#fbbf24' : '#f87171';
-            const confBg = conf >= 80 ? 'rgba(34,197,94,0.1)' : conf >= 50 ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)';
-            const confBorder = conf >= 80 ? 'rgba(34,197,94,0.25)' : conf >= 50 ? 'rgba(245,158,11,0.25)' : 'rgba(239,68,68,0.25)';
-            const nom = [r.prenom, r.nom_famille].filter(Boolean).join(' ') || r.nom_affichage || r.nom_utilisateur;
-            const fields = [
-              ['Nom', nom],
-              ['Naissance', r.date_naissance || (r.annee_naissance ? `${r.annee_naissance}${r.mois_naissance ? '-' + String(r.mois_naissance).padStart(2,'0') : ''}${r.jour_naissance ? '-' + String(r.jour_naissance).padStart(2,'0') : ''}` : null)],
-              ['Né(e) à', r.ville_naissance || r.lieu_naissance],
-              ['Genre', r.genre],
-              ['Email', r.email],
-              ['Tél', r.telephone || r.mobile],
-              ['Mobile', r.mobile && r.telephone ? r.mobile : null],
-              ['IP', r.adresse_ip],
-              ['Adresse', r.adresse],
-              ['Complément', r.complement_adresse],
-              ['Code postal', r.code_postal],
-              ['Ville', r.ville],
-              ['Région', r.region],
-              ['Département', r.departement],
-              ['Pays', r.pays],
-              ['Username', r.nom_utilisateur],
-              ['Discord', r.discord_id],
-              ['Steam', r.steam_id],
-              ['FiveM', r.fivem_license || r.fivem_id],
-              ['Xbox', r.xbox_live_id],
-              ['Société', r.societe],
-              ['Fonction', r.fonction],
-              ['Profession', r.profession],
-              ['NIR', r.nir],
-              ['IBAN', r.iban],
-              ['SIRET', r.siret],
-              ['Immatriculation', r.immatriculation || r.vin_plaque],
-              ['Véhicule', r.marque && r.modele ? `${r.marque} ${r.modele}` : r.marque || r.modele],
-            ].filter(([, v]) => v);
-            return (
-              <div key={i} style={{ padding:'10px 14px', borderBottom: i < results.length - 1 ? `1px solid ${rowBorder}` : 'none' }}>
-                {conf != null && (
-                  <div style={{ marginBottom:7, display:'flex', flexWrap:'wrap', gap:5, alignItems:'center' }}>
-                    <span style={{ fontSize:10, padding:'2px 8px', background:confBg, color:confColor, border:`1px solid ${confBorder}`, letterSpacing:'0.05em' }}>SCORE {conf}%</span>
-                    {(r._sources || []).map((s, j) => (
-                      <span key={j} style={{ fontSize:10, padding:'2px 8px', background:`rgba(${COL},0.07)`, color:`rgba(${COL},0.6)`, border:`1px solid rgba(${COL},0.18)`, letterSpacing:'0.04em' }}>{s}</span>
+
+          {/* Profiles */}
+          <div style={{ display:'flex', flexDirection:'column' }}>
+            {shown.map((r, i) => {
+              const conf = r._confidence;
+              const cColor  = conf >= 80 ? '#22c55e' : conf >= 50 ? '#f59e0b' : '#ef4444';
+              const cBg     = conf >= 80 ? 'rgba(34,197,94,0.1)' : conf >= 50 ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)';
+              const cBorder = conf >= 80 ? 'rgba(34,197,94,0.25)' : conf >= 50 ? 'rgba(245,158,11,0.25)' : 'rgba(239,68,68,0.25)';
+              const nom = [r.prenom, r.nom_famille].filter(Boolean).join(' ') || r.nom_affichage || r.nom_utilisateur || '—';
+              const dob = r.date_naissance || (r.annee_naissance ? `${r.annee_naissance}${r.mois_naissance?'-'+String(r.mois_naissance).padStart(2,'0'):''}${r.jour_naissance?'-'+String(r.jour_naissance).padStart(2,'0'):''}` : null);
+              const fields = [
+                ['Nom complet', nom],
+                ['Naissance', dob],
+                ['Né(e) à', r.ville_naissance || r.lieu_naissance],
+                ['Genre', r.genre],
+                ['Email', r.email],
+                ['Tél', r.telephone],
+                ['Mobile', r.mobile && r.telephone ? r.mobile : null],
+                ['IP', r.adresse_ip],
+                ['Adresse', r.adresse],
+                ['Code postal', r.code_postal],
+                ['Ville', r.ville],
+                ['Région', r.region],
+                ['Département', r.departement],
+                ['Pays', r.pays],
+                ['Username', r.nom_utilisateur],
+                ['Discord', r.discord_id],
+                ['Steam', r.steam_id],
+                ['FiveM', r.fivem_license || r.fivem_id],
+                ['Xbox', r.xbox_live_id],
+                ['Société', r.societe],
+                ['Fonction', r.fonction],
+                ['Profession', r.profession],
+                ['NIR', r.nir],
+                ['IBAN', r.iban],
+                ['SIRET', r.siret],
+                ['Immatriculation', r.immatriculation || r.vin_plaque],
+                ['Véhicule', r.marque && r.modele ? `${r.marque} ${r.modele}` : r.marque || r.modele],
+              ].filter(([, v]) => v);
+
+              return (
+                <div key={i} style={{ borderBottom: i < shown.length - 1 ? '1px solid var(--rule)' : 'none' }}>
+                  {/* Profile top bar */}
+                  <div style={{ padding:'12px 20px', background:'rgba(59,130,246,0.02)', borderBottom:'1px solid rgba(59,130,246,0.07)', display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+                    {/* Score ring */}
+                    {conf != null && (
+                      <div style={{ position:'relative', width:42, height:42, flexShrink:0 }}>
+                        <svg width="42" height="42" viewBox="0 0 42 42" style={{ transform:'rotate(-90deg)' }}>
+                          <circle cx="21" cy="21" r="17" fill="none" stroke="var(--rule)" strokeWidth="3"/>
+                          <circle cx="21" cy="21" r="17" fill="none" stroke={cColor} strokeWidth="3"
+                            strokeDasharray={`${(conf/100)*(2*Math.PI*17).toFixed(1)} 999`} strokeLinecap="round"/>
+                        </svg>
+                        <span style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:800, color:cColor, lineHeight:1 }}>{conf}%</span>
+                      </div>
+                    )}
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontWeight:700, fontSize:15, color:'var(--ink)', letterSpacing:'-0.02em' }}>{nom}</div>
+                      {dob && <div style={{ fontSize:11, color:'var(--ink-mute)', marginTop:2 }}>né{r.genre?.toLowerCase()==='f'?'e':''} le {dob}</div>}
+                    </div>
+                    {(r._sources||[]).map((s,j) => (
+                      <span key={j} style={{ padding:'3px 10px', borderRadius:99, fontSize:11, background:'rgba(59,130,246,0.1)', color:'#3b82f6', border:'1px solid rgba(59,130,246,0.2)' }}>{s}</span>
                     ))}
                   </div>
-                )}
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(210px,1fr))', gap:'4px 18px' }}>
-                  {fields.map(([label, value]) => (
-                    <div key={label} style={{ fontSize:11, display:'flex', gap:6 }}>
-                      <span style={{ color:'var(--ink-mute)', minWidth:62, flexShrink:0 }}>{label}</span>
-                      <span style={{ color:'var(--ink)', wordBreak:'break-all' }}>{value}</span>
-                    </div>
-                  ))}
+                  {/* Fields grid */}
+                  <div style={{ padding:'12px 20px', display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))', gap:6 }}>
+                    {fields.map(([label, value]) => {
+                      const fs = fStyle(label);
+                      return (
+                        <div key={label} onClick={() => navigator.clipboard.writeText(String(value)).catch(()=>{})} style={{ padding:'8px 10px', borderRadius:9, background:fs.bg, border:`1px solid ${fs.border}`, cursor:'none', display:'flex', flexDirection:'column', gap:2 }}>
+                          <span style={{ fontSize:9, color:'var(--ink-mute)', textTransform:'uppercase', letterSpacing:'0.07em', fontFamily:"'JetBrains Mono',monospace" }}>{label}</span>
+                          <span style={{ fontSize:12, color:fs.color, wordBreak:'break-all', fontWeight:500 }}>{String(value)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+
+          {results.length > SHOW && (
+            <div style={{ padding:'10px 20px', borderTop:'1px solid var(--rule)' }}>
+              <button onClick={() => setExpanded(e => !e)} style={{ width:'100%', padding:'8px', borderRadius:8, background:'none', border:'1px solid var(--rule)', color:'var(--ink-mute)', fontSize:12, cursor:'none', fontFamily:"'Geist',sans-serif", textAlign:'center' }}>
+                {expanded ? '↑ Voir moins' : `↓ Afficher les ${results.length - SHOW} autre${results.length-SHOW>1?'s':''} profil${results.length-SHOW>1?'s':''}`}
+              </button>
+            </div>
+          )}
         </div>
       );
     }
