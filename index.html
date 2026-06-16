@@ -3332,16 +3332,13 @@ async function lookupBreach(query, forcedType = null) {
       const creditGrants  = fbToArray(data.creditGrants);
       const badgeGrants   = fbToArray(data.badgeGrants);
       const blacklist     = fbToArray(data.blacklist);
-      const broadcast     = data.broadcast     || null;
+      const broadcast     = data.broadcast || null;
       const staffList     = fbToArray(data.staffList);
-      const reports       = fbToArray(data.reports);
-      const staffChat     = fbToArray(data.staffChat);
-      const remoteUsers   = fbToArray(data.users);
-      const auditLog      = fbToArray(data.auditLog);
       const forcedLogouts = fbToArray(data.forcedLogouts);
       const userCredits   = (data.userCredits && typeof data.userCredits === 'object') ? data.userCredits : {};
+
+      // Données publiques — tout le monde
       cacheLeaderboard(entries);
-      cacheAuditLog(auditLog);
       cacheForcedLogouts(forcedLogouts);
       cacheUserCredits(userCredits);
       localStorage.setItem(PREMIUM_LIST_KEY, JSON.stringify(premiumUsers));
@@ -3350,13 +3347,27 @@ async function lookupBreach(query, forcedType = null) {
       cacheBlacklist(blacklist);
       cacheBroadcast(broadcast);
       cacheStaffList(staffList);
-      cacheReports(reports);
-      cacheStaffChat(staffChat);
+
+      // Users — nécessaire pour login/register sur nouveau navigateur
+      const remoteUsers = fbToArray(data.users);
       if (remoteUsers.length > 0) {
         const local = getUsers();
         const merged = [...remoteUsers];
         local.forEach(u => { if (!merged.find(r => r.email === u.email)) merged.push(u); });
         localStorage.setItem(USERS_KEY, JSON.stringify(merged));
+      }
+
+      // Données staff/admin uniquement — jamais stockées pour un user normal
+      const _sess = loadSession();
+      const _isStaffOrAdmin = _sess && (isAdmin(_sess) || isStaff(_sess));
+      if (_isStaffOrAdmin) {
+        cacheReports(fbToArray(data.reports));
+        cacheStaffChat(fbToArray(data.staffChat));
+        cacheAuditLog(fbToArray(data.auditLog));
+      } else {
+        localStorage.removeItem('searcher_staffchat_v1');
+        localStorage.removeItem('searcher_reports_v1');
+        localStorage.removeItem('searcher_audit_v1');
       }
       return entries;
     }
