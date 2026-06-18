@@ -10301,118 +10301,54 @@ async function lookupBreach(query, forcedType = null) {
         setReports(updated); await pushReports(updated);
       };
 
-      const STAFF_TABS = [
-        { id:'reports', label:'Signalements', badge: visibleReports.length + myEscalated.length,
-          icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/><path d="M9 13h6M9 17h4M14 2v6h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg> },
-        { id:'users', label:'Utilisateurs',
-          icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.8"/></svg> },
-      ];
-      const currentStaffTab = STAFF_TABS.find(t => t.id === tab);
+      const STAFF_TABS = [{ id:'reports', label:'Signalements' }, { id:'users', label:'Utilisateurs' }];
 
       return (
-        <div style={{ height:'100vh', background:'#0d0d14', fontFamily:"'Geist',sans-serif", display:'flex', overflow:'hidden', cursor:'none' }}>
-
-          {/* ── Sidebar ── */}
-          <div style={{ width:220, flexShrink:0, display:'flex', flexDirection:'column', borderRight:'1px solid rgba(255,255,255,0.05)', background:'#0a0a11' }}>
-            {/* Logo */}
-            <div style={{ padding:'20px 18px 16px', borderBottom:'1px solid rgba(255,255,255,0.05)', display:'flex', alignItems:'center', gap:10 }}>
-              <div style={{ width:34, height:34, borderRadius:10, background:'linear-gradient(135deg,#1d4ed8,#0ea5e9)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="white" strokeWidth="2" strokeLinejoin="round"/></svg>
-              </div>
-              <div>
-                <div style={{ fontSize:14, fontWeight:700, color:'#f1f5f9', letterSpacing:'-0.02em' }}>Searcher</div>
-                <div style={{ fontSize:9, color:'#3b82f6', fontFamily:"'JetBrains Mono',monospace", letterSpacing:'0.12em', marginTop:1 }}>STAFF PANEL</div>
-              </div>
+        <div style={{ height:'100vh', background:'var(--bg)', ..._staffMono, display:'flex', flexDirection:'column', cursor:'none' }}>
+          {/* Header */}
+          <div style={{ borderBottom:'1px solid var(--rule)', padding:'0 32px', display:'flex', alignItems:'center', justifyContent:'space-between', height:56, flexShrink:0 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:16 }}>
+              <span style={{ fontSize:11, color:'var(--blue)', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>■ PANEL STAFF</span>
+              <span style={{ color:'var(--ink-mute)' }}>|</span>
+              <span style={{ fontSize:11, color:'var(--ink-mute)' }}>Bienvenue, <span style={{ color:'var(--blue)', fontWeight:700 }}>{session?.name}</span></span>
             </div>
-
-            {/* KPI pills */}
-            <div style={{ padding:'12px 14px', borderBottom:'1px solid rgba(255,255,255,0.05)', display:'grid', gridTemplateColumns:'1fr 1fr', gap:6 }}>
-              {[
-                { label:'Ouverts',   val:visibleReports.length, col:'#ef4444' },
-                { label:'Escaladés', val:myEscalated.length,    col:'#f59e0b' },
-              ].map(k => (
-                <div key={k.label} style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:8, padding:'8px 10px' }}>
-                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.3)', letterSpacing:'0.08em', marginBottom:3, fontFamily:"'JetBrains Mono',monospace" }}>{k.label.toUpperCase()}</div>
-                  <div style={{ fontSize:16, fontWeight:800, color:k.col }}>{k.val}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Nav */}
-            <div style={{ padding:'10px 10px', display:'flex', flexDirection:'column', gap:2 }}>
-              {STAFF_TABS.map(t => {
-                const active = tab === t.id;
-                return (
-                  <button key={t.id} onClick={() => setTab(t.id)} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:8, border:'none', background:active?'rgba(37,99,255,0.15)':'transparent', color:active?'#60a5fa':'rgba(255,255,255,0.4)', fontSize:13, textAlign:'left', cursor:'none', fontFamily:"'Geist',sans-serif", fontWeight:active?600:400, boxShadow:active?'inset 2px 0 0 #3b82f6':'none', width:'100%' }}>
-                    <span style={{ flexShrink:0, color:active?'#60a5fa':'rgba(255,255,255,0.3)' }}>{t.icon}</span>
-                    <span style={{ flex:1 }}>{t.label}</span>
-                    {t.badge > 0 && <span style={{ background:'#ef4444', color:'white', fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:10, fontFamily:"'JetBrains Mono',monospace" }}>{t.badge}</span>}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Chat (fixed height at bottom of sidebar) */}
-            <div style={{ height:280, flexShrink:0, display:'flex', flexDirection:'column', borderTop:'1px solid rgba(255,255,255,0.05)', marginTop:4 }}>
-              <div style={{ padding:'8px 14px 6px', fontSize:9, color:'rgba(255,255,255,0.25)', fontFamily:"'JetBrains Mono',monospace", letterSpacing:'0.12em', flexShrink:0 }}>
-                CHAT STAFF
-              </div>
-              <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column' }}>
-                <StaffChat session={session} />
-              </div>
-            </div>
-
-            {/* User footer */}
-            <div style={{ padding:'12px 14px', borderTop:'1px solid rgba(255,255,255,0.05)', display:'flex', alignItems:'center', gap:10, flexShrink:0 }}>
-              <div style={{ width:32, height:32, borderRadius:8, background:'linear-gradient(135deg,#1d4ed8,#0ea5e9)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color:'white', flexShrink:0 }}>
-                {(session?.name||'S')[0].toUpperCase()}
-              </div>
-              <div style={{ flex:1, overflow:'hidden' }}>
-                <div style={{ fontSize:12, fontWeight:600, color:'#f1f5f9', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{session?.name}</div>
-                <div style={{ fontSize:10, color:'#3b82f6', fontFamily:"'JetBrains Mono',monospace", letterSpacing:'0.06em' }}>STAFF</div>
-              </div>
-              <button onClick={onBack} title="Retour" style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:7, color:'rgba(255,255,255,0.4)', cursor:'none', padding:'6px 8px', display:'flex', alignItems:'center' }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M5 12l7 7M5 12l7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              </button>
-            </div>
+            <button onClick={onBack} style={{ ..._staffBtn('var(--blue)'), padding:'6px 14px' }}>← Retour</button>
           </div>
-
-          {/* ── Main area ── */}
-          <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
-            {/* Header */}
-            <div style={{ height:58, borderBottom:'1px solid rgba(255,255,255,0.05)', padding:'0 28px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0, background:'rgba(255,255,255,0.01)' }}>
-              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                <span style={{ color:'rgba(255,255,255,0.25)' }}>{currentStaffTab?.icon}</span>
-                <span style={{ fontSize:16, fontWeight:700, color:'#f1f5f9', letterSpacing:'-0.02em' }}>{currentStaffTab?.label}</span>
-                {currentStaffTab?.badge > 0 && <span style={{ background:'rgba(239,68,68,0.15)', border:'1px solid rgba(239,68,68,0.3)', color:'#ef4444', fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:6, fontFamily:"'JetBrains Mono',monospace" }}>{currentStaffTab.badge} en attente</span>}
+          {/* Two-column body */}
+          <div style={{ flex:1, minHeight:0, display:'flex', overflow:'hidden' }}>
+            {/* Left: tabs + content */}
+            <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column' }}>
+              {/* Tab bar */}
+              <div style={{ display:'flex', borderBottom:'1px solid var(--rule)', flexShrink:0 }}>
+                {STAFF_TABS.map(t => (
+                  <button key={t.id} onClick={() => setTab(t.id)} style={{ padding:'10px 22px', background:'none', border:'none', borderBottom:tab===t.id?'2px solid var(--blue)':'2px solid transparent', color:tab===t.id?'var(--blue)':'var(--ink-mute)', fontSize:11, letterSpacing:'0.08em', textTransform:'uppercase', cursor:'none', ..._staffMono, marginBottom:-1 }}>{t.label}</button>
+                ))}
               </div>
-            </div>
-
-            {/* Tab content */}
-            <div style={{ flex:1, overflowY:'auto', padding:'24px 28px' }}>
 
               {/* Signalements */}
-              {tab === 'reports' && (<>
-                {visibleReports.length === 0 && myEscalated.length === 0 && (
-                  <div style={{ fontSize:13, color:'rgba(255,255,255,0.2)', textAlign:'center', padding:'60px 0', fontFamily:"'JetBrains Mono',monospace" }}>Aucun signalement en attente.</div>
-                )}
-                {visibleReports.length > 0 && (<>
-                  <div style={{ fontSize:9, color:'rgba(239,68,68,0.6)', letterSpacing:'0.12em', marginBottom:14, fontFamily:"'JetBrains Mono',monospace" }}>SIGNALEMENTS OUVERTS — {visibleReports.length}</div>
-                  <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:28 }}>
-                    {visibleReports.map(r => (
-                      <StaffReportCard key={r.id} r={r} showEscalate={true} noteMap={noteMap} setNoteMap={setNoteMap} escalate={escalate} closeReport={closeReport} />
-                    ))}
-                  </div>
-                </>)}
-                {myEscalated.length > 0 && (<>
-                  <div style={{ fontSize:9, color:'rgba(251,191,36,0.6)', letterSpacing:'0.12em', marginBottom:14, fontFamily:"'JetBrains Mono',monospace" }}>ESCALADÉS VERS ADMIN — {myEscalated.length}</div>
-                  <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                    {myEscalated.map(r => (
-                      <StaffReportCard key={r.id} r={r} showEscalate={false} noteMap={noteMap} setNoteMap={setNoteMap} escalate={escalate} closeReport={closeReport} />
-                    ))}
-                  </div>
-                </>)}
-              </>)}
+              {tab === 'reports' && (
+                <div style={{ flex:1, overflowY:'auto', padding:'28px 32px' }}>
+                  {visibleReports.length === 0 && myEscalated.length === 0 && (
+                    <div style={{ fontSize:12, color:'rgba(192,132,252,0.45)', textAlign:'center', padding:'40px 0' }}>Aucun signalement en attente.</div>
+                  )}
+                  {visibleReports.length > 0 && (<>
+                    <div style={{ fontSize:9, color:'rgba(56,189,248,0.5)', letterSpacing:'0.1em', marginBottom:14 }}>SIGNALEMENTS OUVERTS — {visibleReports.length}</div>
+                    <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:24 }}>
+                      {visibleReports.map(r => (
+                        <StaffReportCard key={r.id} r={r} showEscalate={true} noteMap={noteMap} setNoteMap={setNoteMap} escalate={escalate} closeReport={closeReport} />
+                      ))}
+                    </div>
+                  </>)}
+                  {myEscalated.length > 0 && (<>
+                    <div style={{ fontSize:9, color:'rgba(251,191,36,0.5)', letterSpacing:'0.1em', marginBottom:14 }}>ESCALADÉS VERS ADMIN — {myEscalated.length}</div>
+                    <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                      {myEscalated.map(r => (
+                        <StaffReportCard key={r.id} r={r} showEscalate={false} noteMap={noteMap} setNoteMap={setNoteMap} escalate={escalate} closeReport={closeReport} />
+                      ))}
+                    </div>
+                  </>)}
+                </div>
+              )}
 
               {/* Utilisateurs */}
               {tab === 'users' && (() => {
@@ -10426,13 +10362,14 @@ async function lookupBreach(query, forcedType = null) {
                   ? entries.filter(e => (e.name||'').toLowerCase().includes(q) || (e.uid||'').toLowerCase().includes(q))
                   : [];
                 const tag = (label, col) => (
-                  <span style={{ fontSize:9, background:`${col}18`, color:col, padding:'2px 8px', borderRadius:4, letterSpacing:'0.08em', fontFamily:"'JetBrains Mono',monospace", border:`1px solid ${col}28` }}>{label}</span>
+                  <span style={{ fontSize:9, background:`${col}18`, color:col, padding:'2px 8px', letterSpacing:'0.08em', ..._staffMono }}>{label}</span>
                 );
                 const ACTION_LABEL = { rate_limit:'RATE LIMIT', lb_remove:'RETRAIT LB', lb_adjust:'AJUST. LB', lb_reset:'RESET LB', force_logout:'FORCE-LOGOUT' };
                 const ACTION_COLOR = { rate_limit:'#fbbf24', lb_remove:'#f87171', lb_adjust:'#38bdf8', lb_reset:'#f87171', force_logout:'#f87171' };
                 return (
-                  <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-                    <input style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', color:'#e2e8f0', fontFamily:"'Geist',sans-serif", fontSize:13, padding:'10px 14px', outline:'none', borderRadius:8, cursor:'none', width:'100%', boxSizing:'border-box' }} placeholder="Pseudo ou UID (min 2 caractères)…" value={userQ} onChange={e => setUserQ(e.target.value)} />
+                  <div style={{ flex:1, overflowY:'auto', padding:'28px 32px', display:'flex', flexDirection:'column', gap:14 }}>
+                    <div style={{ fontSize:9, color:'rgba(56,189,248,0.45)', letterSpacing:'0.1em', ..._staffMono }}>RECHERCHER UN UTILISATEUR</div>
+                    <input style={_staffInp} placeholder="Pseudo ou UID (min 2 caractères)…" value={userQ} onChange={e => setUserQ(e.target.value)} />
                     {q.length >= 2 && matched.length === 0 && (
                       <div style={{ padding:'20px 0', fontSize:13, color:'rgba(255,255,255,0.2)', textAlign:'center', fontFamily:"'JetBrains Mono',monospace" }}>Aucun utilisateur trouvé.</div>
                     )}
@@ -10495,7 +10432,10 @@ async function lookupBreach(query, forcedType = null) {
                   </div>
                 );
               })()}
-
+            </div>
+            {/* Right: chat */}
+            <div style={{ width:340, flexShrink:0, borderLeft:'1px solid rgba(192,132,252,0.1)', display:'flex', flexDirection:'column', minHeight:0 }}>
+              <StaffChat session={session} />
             </div>
           </div>
           <Cursor />
