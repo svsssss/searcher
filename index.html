@@ -10516,7 +10516,6 @@ async function lookupBreach(query, forcedType = null) {
         <div style={{ minHeight:'100vh', background:'#09090f', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:16 }}>
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" style={{ animation:'spin 1s linear infinite' }}><circle cx="12" cy="12" r="10" stroke="#7c3aed" strokeWidth="2" strokeDasharray="32" strokeDashoffset="12" strokeLinecap="round"/></svg>
           <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-          <span style={{ ...mono, fontSize:11, color:'rgba(255,255,255,0.3)', letterSpacing:'0.1em' }}>CHARGEMENT…</span>
         </div>
       );
 
@@ -10526,79 +10525,11 @@ async function lookupBreach(query, forcedType = null) {
           <div style={{ fontSize:16, fontWeight:700, color:'#f1f5f9' }}>Profil introuvable</div>
           <div style={{ fontSize:13, color:'rgba(255,255,255,0.3)' }}>L'utilisateur <b style={{ color:'rgba(255,255,255,0.6)' }}>{slug}</b> n'existe pas.</div>
           <a href="/" style={{ marginTop:8, fontSize:12, color:'#a78bfa', textDecoration:'none', border:'1px solid rgba(167,139,250,0.3)', padding:'8px 18px', borderRadius:8 }}>→ Aller sur Searcher</a>
-        </div>
-      );
-
-      const badge = (label, col) => (
-        <span style={{ fontSize:10, background:`${col}18`, color:col, padding:'3px 10px', borderRadius:20, border:`1px solid ${col}30`, ...mono, fontWeight:700, letterSpacing:'0.06em' }}>{label}</span>
-      );
-
-      const joinDate = user.createdAt ? new Date(user.createdAt).toLocaleDateString('fr-FR', { year:'numeric', month:'long' }) : null;
-      const lastSeen = user.updatedAt ? new Date(user.updatedAt).toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' }) : null;
-
-      return (
-        <div style={{ minHeight:'100vh', background:'#09090f', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'40px 16px', fontFamily:"'Geist',sans-serif", position:'relative', overflow:'hidden' }}>
-          {/* Background glow */}
-          <div style={{ position:'absolute', top:'-20%', left:'50%', transform:'translateX(-50%)', width:600, height:600, background:'radial-gradient(circle, rgba(124,58,237,0.12) 0%, transparent 70%)', pointerEvents:'none' }} />
-
-          {/* Card */}
-          <div style={{ width:'100%', maxWidth:420, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:20, overflow:'hidden', position:'relative', zIndex:1 }}>
-            {/* Banner */}
-            <div style={{ height:90, background:'linear-gradient(135deg, #1e0a3c, #0f172a, #1e1b4b)', position:'relative' }}>
-              <div style={{ position:'absolute', inset:0, backgroundImage:'radial-gradient(circle at 30% 50%, rgba(124,58,237,0.3) 0%, transparent 60%), radial-gradient(circle at 70% 50%, rgba(37,99,255,0.2) 0%, transparent 60%)' }} />
-            </div>
-
-            {/* Avatar */}
-            <div style={{ padding:'0 24px', marginTop:-44, position:'relative' }}>
-              <div style={{ width:80, height:80, borderRadius:16, border:'4px solid #09090f', overflow:'hidden', background:'linear-gradient(135deg,#7c3aed,#4f46e5)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:32, fontWeight:800, color:'white', flexShrink:0 }}>
-                {user.avatar
-                  ? <img src={user.avatar} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-                  : (user.name||'?')[0].toUpperCase()
-                }
-              </div>
-            </div>
-
-            {/* Info */}
-            <div style={{ padding:'12px 24px 24px', display:'flex', flexDirection:'column', gap:12 }}>
-              <div>
-                <div style={{ fontSize:22, fontWeight:800, color:'#f1f5f9', letterSpacing:'-0.03em', marginBottom:6 }}>{user.name}</div>
-                <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-                  {user.isAdmU  && badge('ADMIN',   '#f87171')}
-                  {user.isStaffU && badge('STAFF',  '#60a5fa')}
-                  {user.isPrem  && badge('PREMIUM', '#fbbf24')}
-                  {!user.isAdmU && !user.isStaffU && !user.isPrem && badge('MEMBRE', '#6b7280')}
-                </div>
-              </div>
-
-              {user.bio && <p style={{ fontSize:14, color:'rgba(255,255,255,0.55)', lineHeight:1.6, margin:0 }}>{user.bio}</p>}
-
-              {/* Stats */}
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginTop:4 }}>
-                {[
-                  { label:'Recherches', val:(user.searchCount||0).toLocaleString('fr-FR'), col:'#a78bfa' },
-                  { label:'Likes',      val:(user.likes||0).toLocaleString('fr-FR'),       col:'#f472b6' },
-                  ...(joinDate ? [{ label:'Membre depuis', val:joinDate, col:'#94a3b8' }] : []),
-                  ...(lastSeen ? [{ label:'Vu le',         val:lastSeen, col:'#64748b'  }] : []),
-                ].map(s => (
-                  <div key={s.label} style={{ background:'rgba(255,255,255,0.04)', borderRadius:10, padding:'10px 12px', border:'1px solid rgba(255,255,255,0.06)' }}>
-                    <div style={{ fontSize:9, color:'rgba(255,255,255,0.3)', letterSpacing:'0.1em', ...mono, marginBottom:3 }}>{s.label.toUpperCase()}</div>
-                    <div style={{ fontSize:14, fontWeight:700, color:s.col }}>{s.val}</div>
-                  </div>
-                ))}
-              </div>
-
-              {/* CTA */}
-              <a href="/" style={{ marginTop:4, display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:'rgba(124,58,237,0.15)', border:'1px solid rgba(124,58,237,0.3)', color:'#a78bfa', borderRadius:10, padding:'11px 0', textDecoration:'none', fontSize:13, fontWeight:600 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2"/><path d="M21 21l-4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-                Utiliser Searcher
-              </a>
-            </div>
-          </div>
-
-          <div style={{ marginTop:20, fontSize:11, color:'rgba(255,255,255,0.15)', ...mono, letterSpacing:'0.08em' }}>searcher.bz</div>
           <Cursor />
         </div>
       );
+
+      return <ProfileViewer entry={user} onBack={() => { window.location.href = '/'; }} session={null} onReport={null} />;
     }
 
     // ── App ───────────────────────────────────────────────────────────────────
