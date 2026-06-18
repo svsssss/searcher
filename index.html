@@ -10535,7 +10535,8 @@ async function lookupBreach(query, forcedType = null) {
         </div>
       );
 
-      return <ProfileViewer entry={user} onBack={() => { window.location.href = '/'; }} session={null} onReport={null} />;
+      const _pubSession = loadSession();
+      return <ProfileViewer entry={user} onBack={() => { window.location.href = '/'; }} session={_pubSession} onReport={null} />;
     }
 
     // ── App ───────────────────────────────────────────────────────────────────
