@@ -9174,7 +9174,7 @@ async function lookupBreach(query, forcedType = null) {
     }
 
     // ── Profile Viewer (depuis classement) ────────────────────────────────────
-    function ProfileViewer({ entry, onBack, session, onReport }) {
+    function ProfileViewer({ entry, onBack, session, onReport, publicPage = false }) {
       const isOwn = useMemo(() => {
         if (!session) return false;
         const myUid = session.id || session.email || session.name;
@@ -9200,6 +9200,7 @@ async function lookupBreach(query, forcedType = null) {
       const [playing, setPlaying]       = useState(false);
       const [volume, setVolume] = useState(0.8);
       const [prevVolume, setPrevVolume] = useState(0.8);
+      const [ctaDismissed, setCtaDismissed] = useState(false);
       const audioRef = useRef(null);
 
       useEffect(() => {
@@ -9361,7 +9362,29 @@ async function lookupBreach(query, forcedType = null) {
             </div>
           </div>
           ); })()}
-          <button className="pub-back" onClick={onBack}>← Classement</button>
+          {(!publicPage || session) && (
+            <button className="pub-back" onClick={onBack}>← Classement</button>
+          )}
+          {publicPage && !session && !ctaDismissed && (
+            <div style={{ position:'fixed', bottom:28, left:'50%', transform:'translateX(-50%)', zIndex:200, display:'flex', alignItems:'center', gap:10, background:'rgba(8,8,14,0.92)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:50, padding:'10px 14px 10px 10px', boxShadow:'0 8px 48px rgba(0,0,0,0.7)', backdropFilter:'blur(20px)', animation:'_ctaSlide 0.45s cubic-bezier(.22,1,.36,1) both', whiteSpace:'nowrap', cursor:'default' }}>
+              <style>{`@keyframes _ctaSlide{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}`}</style>
+              <div style={{ width:38, height:38, borderRadius:11, background:'#0a0a14', border:'1px solid rgba(255,255,255,0.1)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <svg width="20" height="20" viewBox="0 0 26 26" xmlns="http://www.w3.org/2000/svg"><rect width="26" height="26" rx="7" fill="#0a0a14"/><circle cx="11" cy="11" r="6" fill="none" stroke="white" strokeWidth="1.6"/><line x1="5" y1="11" x2="8.2" y2="11" stroke="white" strokeWidth="1.2" strokeLinecap="round"/><line x1="13.8" y1="11" x2="17" y2="11" stroke="white" strokeWidth="1.2" strokeLinecap="round"/><line x1="11" y1="5" x2="11" y2="8.2" stroke="white" strokeWidth="1.2" strokeLinecap="round"/><line x1="11" y1="13.8" x2="11" y2="17" stroke="white" strokeWidth="1.2" strokeLinecap="round"/><circle cx="11" cy="11" r="1.6" fill="#8b5cf6"/><line x1="15.5" y1="15.5" x2="21" y2="21" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', gap:1 }}>
+                <span style={{ fontSize:13, fontWeight:700, color:'#f1f5f9', fontFamily:"'Geist',sans-serif", letterSpacing:'-0.01em' }}>searcher.bz</span>
+                <span style={{ fontSize:11, color:'rgba(255,255,255,0.45)', fontFamily:"'Geist',sans-serif" }}>Créez votre profil gratuitement !</span>
+              </div>
+              <a href="/" style={{ marginLeft:6, background:'rgba(124,58,237,0.18)', border:'1px solid rgba(124,58,237,0.45)', color:'#c4b5fd', borderRadius:50, padding:'6px 16px', fontSize:11, fontWeight:700, textDecoration:'none', fontFamily:"'Geist',sans-serif", letterSpacing:'0.01em', transition:'background 0.15s' }}
+                onMouseEnter={e => e.currentTarget.style.background='rgba(124,58,237,0.32)'}
+                onMouseLeave={e => e.currentTarget.style.background='rgba(124,58,237,0.18)'}
+              >S'inscrire →</a>
+              <button onClick={() => setCtaDismissed(true)} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.25)', cursor:'pointer', padding:'0 0 0 6px', fontSize:18, lineHeight:1, fontFamily:'sans-serif', transition:'color 0.15s' }}
+                onMouseEnter={e => e.currentTarget.style.color='rgba(255,255,255,0.6)'}
+                onMouseLeave={e => e.currentTarget.style.color='rgba(255,255,255,0.25)'}
+              >×</button>
+            </div>
+          )}
           {!isOwn && session && onReport && (
             <button
               onClick={() => onReport(entry.name)}
@@ -10536,7 +10559,7 @@ async function lookupBreach(query, forcedType = null) {
       );
 
       const _pubSession = loadSession();
-      return <ProfileViewer entry={user} onBack={() => { window.location.href = '/'; }} session={_pubSession} onReport={null} />;
+      return <ProfileViewer entry={user} onBack={() => { window.location.href = '/'; }} session={_pubSession} onReport={null} publicPage={true} />;
     }
 
     // ── App ───────────────────────────────────────────────────────────────────
