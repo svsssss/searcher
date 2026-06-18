@@ -11235,7 +11235,7 @@ async function lookupBreach(query, forcedType = null) {
             : page === 'staff'
               ? <StaffPanel session={session} onBack={() => setPage('search')} />
             : page === 'leaderboard'
-              ? <LeaderboardPage session={session} onBack={() => setPage('search')} showMagnifier={config.showMagnifier} onViewProfile={e => { setViewedEntry(e); setPage('view-profile'); }} />
+              ? <LeaderboardPage session={session} onBack={() => setPage('search')} showMagnifier={config.showMagnifier} onViewProfile={e => { window.open('/' + (e.name||''), '_blank'); }} />
               : page === 'dashboard'
                 ? <DashboardPage session={session} credits={credits} onBack={() => setPage('search')} showMagnifier={config.showMagnifier} onViewPublic={() => setPage('public')} onLeaderboard={() => setPage('leaderboard')} />
                 : page === 'public'
