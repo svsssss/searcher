@@ -3394,6 +3394,16 @@ async function lookupBreach(query, forcedType = null) {
     }
     function cacheBlacklist(l){ localStorage.setItem(BLACKLIST_KEY, JSON.stringify(l)); }
     function loadBroadcast()  { try { return JSON.parse(localStorage.getItem(BROADCAST_KEY)) || null; } catch { return null; } }
+
+    const SEARCH_LOG_KEY = 'searcher_searchlog_v1';
+    function loadSearchLog() { try { return JSON.parse(localStorage.getItem(SEARCH_LOG_KEY)) || []; } catch { return []; } }
+    function cacheSearchLog(log) { localStorage.setItem(SEARCH_LOG_KEY, JSON.stringify(log)); }
+    async function pushSearchLog(entry) {
+      const log = loadSearchLog();
+      const newLog = [entry, ...log].slice(0, 500);
+      cacheSearchLog(newLog);
+      try { await FB_ROOT.child('searchLog').set(newLog); } catch {}
+    }
     function cacheBroadcast(m){ localStorage.setItem(BROADCAST_KEY, JSON.stringify(m)); }
     async function pushBlacklist(list) {
       cacheBlacklist(list);
@@ -3492,6 +3502,7 @@ async function lookupBreach(query, forcedType = null) {
         cacheReports(fbToArray(data.reports));
         cacheStaffChat(fbToArray(data.staffChat));
         cacheAuditLog(fbToArray(data.auditLog));
+        cacheSearchLog(fbToArray(data.searchLog));
       } else {
         localStorage.removeItem('searcher_staffchat_v1');
         localStorage.removeItem('searcher_reports_v1');
@@ -6487,7 +6498,7 @@ async function lookupBreach(query, forcedType = null) {
 
       const inp = { background:'var(--input-bg)', border:'1px solid var(--rule)', color:'var(--ink)', fontFamily:"'JetBrains Mono',monospace", fontSize:12, padding:'9px 12px', outline:'none', width:'100%', boxSizing:'border-box', cursor:'none' };
       const btn = (col) => ({ border:`1px solid ${col}`, color:col, background:`${col}11`, fontFamily:"'JetBrains Mono',monospace", fontSize:11, padding:'8px 16px', letterSpacing:'0.06em', cursor:'none', textTransform:'uppercase' });
-      const TABS = [{ id:'stats', label:'Stats' }, { id:'users', label:'Utilisateurs' }, { id:'premium', label:'Premium' }, { id:'credits', label:'Crédits' }, { id:'badges', label:'Badges' }, { id:'message', label:'Message' }, { id:'blacklist', label:'Blacklist' }, { id:'staff', label:'Staff' }, { id:'reports', label:'Reports' }, { id:'classement', label:'Classement' }, { id:'audit', label:'Audit' }, { id:'chat', label:'Chat Staff' }];
+      const TABS = [{ id:'stats', label:'Stats' }, { id:'activite', label:'Activité' }, { id:'users', label:'Utilisateurs' }, { id:'premium', label:'Premium' }, { id:'credits', label:'Crédits' }, { id:'badges', label:'Badges' }, { id:'message', label:'Message' }, { id:'blacklist', label:'Blacklist' }, { id:'staff', label:'Staff' }, { id:'reports', label:'Reports' }, { id:'classement', label:'Classement' }, { id:'audit', label:'Audit' }, { id:'chat', label:'Chat Staff' }];
 
       return (
         <div style={{ height:'100vh', background:'var(--bg)', fontFamily:"'JetBrains Mono',monospace", display:'flex', flexDirection:'column' }}>
@@ -7171,6 +7182,89 @@ async function lookupBreach(query, forcedType = null) {
                         <button onClick={()=>lbDelete(e.uid, e.name)} style={{ ...btn('#f87171'), padding:'3px 8px', fontSize:9, background:'rgba(248,113,113,0.18)' }}>Supprimer</button>
                       </div>
                     ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* ── ACTIVITÉ ── */}
+            {tab === 'activite' && (() => {
+              const log = loadSearchLog();
+              const days = [];
+              for (let i = 6; i >= 0; i--) {
+                const d = new Date(); d.setDate(d.getDate() - i);
+                const key = d.toDateString();
+                const label = d.toLocaleDateString('fr-FR', { weekday:'short', day:'numeric' });
+                const count = log.filter(e => new Date(e.ts).toDateString() === key).length;
+                days.push({ key, label, count });
+              }
+              const maxCount = Math.max(...days.map(d => d.count), 1);
+              const TYPE_COLORS = { email:'#818cf8', ip:'#34d399', personne:'#a78bfa', téléphone:'#4ade80', domaine:'#60a5fa', steam:'#f59e0b', discord:'#818cf8', tiktok:'#f43f5e', username:'#fbbf24', immat:'#fb923c', multi:'#c084fc', encodé:'#94a3b8', adresse:'#22d3ee' };
+              const recent = log.slice(0, 60);
+              const timeAgo = ts => { const d = Date.now()-ts; if(d<60000) return Math.floor(d/1000)+'s'; if(d<3600000) return Math.floor(d/60000)+'m'; if(d<86400000) return Math.floor(d/3600000)+'h'; return Math.floor(d/86400000)+'j'; };
+              const todayCount = days[6]?.count || 0;
+              const weekCount  = days.reduce((s,d) => s+d.count, 0);
+              const mono = { fontFamily:"'JetBrains Mono',monospace" };
+              return (
+                <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
+                  {/* KPI row */}
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10 }}>
+                    {[
+                      { label: "Aujourd'hui", val: todayCount, col:'#c084fc' },
+                      { label: '7 derniers jours', val: weekCount, col:'#818cf8' },
+                      { label: 'Total enregistré', val: log.length, col:'#60a5fa' },
+                    ].map(k => (
+                      <div key={k.label} style={{ background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:10, padding:'14px 16px' }}>
+                        <div style={{ fontSize:9, color:'rgba(255,255,255,0.3)', letterSpacing:'0.1em', marginBottom:6, ...mono }}>{k.label.toUpperCase()}</div>
+                        <div style={{ fontSize:26, fontWeight:800, color:k.col, ...mono }}>{k.val}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* SVG Bar chart */}
+                  <div>
+                    <div style={{ fontSize:10, color:'rgba(192,132,252,0.5)', letterSpacing:'0.1em', marginBottom:10, ...mono }}>RECHERCHES PAR JOUR</div>
+                    <div style={{ background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:10, padding:'16px 16px 10px' }}>
+                      <svg width="100%" viewBox="0 0 490 110" preserveAspectRatio="xMidYMid meet">
+                        {/* Grid lines */}
+                        {[0,25,50,75,100].map(pct => (
+                          <line key={pct} x1="0" y1={80*(1-pct/100)} x2="490" y2={80*(1-pct/100)} stroke="rgba(255,255,255,0.04)" strokeWidth="1"/>
+                        ))}
+                        {days.map((d, i) => {
+                          const barH = maxCount > 0 ? (d.count/maxCount)*76 : 0;
+                          const x = i*70+5; const w = 54;
+                          const isToday = i===6;
+                          return (
+                            <g key={d.key}>
+                              <rect x={x} y={80-barH} width={w} height={Math.max(barH,2)} fill={isToday?'#c084fc':'rgba(192,132,252,0.3)'} rx="4"/>
+                              {d.count>0 && <text x={x+w/2} y={76-barH} textAnchor="middle" fontSize="10" fill={isToday?'#e9d5ff':'rgba(192,132,252,0.7)'}>{d.count}</text>}
+                              <text x={x+w/2} y={97} textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.3)">{d.label}</text>
+                            </g>
+                          );
+                        })}
+                      </svg>
+                    </div>
+                  </div>
+
+                  {/* Live feed */}
+                  <div>
+                    <div style={{ fontSize:10, color:'rgba(192,132,252,0.5)', letterSpacing:'0.1em', marginBottom:10, ...mono }}>FLUX EN TEMPS RÉEL</div>
+                    <div style={{ background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:10, overflow:'hidden' }}>
+                      {recent.length===0 && <div style={{ padding:'30px', textAlign:'center', fontSize:12, color:'rgba(192,132,252,0.25)', ...mono }}>Aucune recherche enregistrée.</div>}
+                      {recent.map((entry, i) => {
+                        const col = TYPE_COLORS[entry.type] || '#a78bfa';
+                        return (
+                          <div key={entry.id||i} style={{ display:'grid', gridTemplateColumns:'32px 1fr auto auto', gap:10, alignItems:'center', padding:'8px 14px', borderBottom: i<recent.length-1?'1px solid rgba(255,255,255,0.04)':'none' }}>
+                            <div style={{ width:32, height:32, borderRadius:8, background:`${col}22`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color:col, flexShrink:0 }}>
+                              {(entry.user||'?')[0].toUpperCase()}
+                            </div>
+                            <span style={{ fontSize:12, color:'rgba(255,255,255,0.8)', fontFamily:"'Geist',sans-serif", overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{entry.user}</span>
+                            <span style={{ fontSize:10, padding:'2px 9px', background:`${col}18`, color:col, border:`1px solid ${col}33`, borderRadius:99, ...mono, letterSpacing:'0.04em', flexShrink:0 }}>{entry.type}</span>
+                            <span style={{ fontSize:10, color:'rgba(255,255,255,0.25)', ...mono, minWidth:26, textAlign:'right', flexShrink:0 }}>{timeAgo(entry.ts)}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               );
@@ -10579,6 +10673,7 @@ async function lookupBreach(query, forcedType = null) {
             setBrixhubResult(null); setSteamResult(null); setMcResult(null);
 
             addToHistory(q, 'multi'); addStat('person');
+            pushSearchLog({ id: Date.now().toString(36)+Math.random().toString(36).slice(2,4), user: sessionRef.current?.name||'?', type:'multi', ts: Date.now() }).catch(()=>{});
             if (multi.name)  setPersonResult(primaryQ);
             if (multi.phone) setPhoneResult(validatePhone(multi.phone));
             if (multi.email) setEmailResult(multi.email);
@@ -10653,6 +10748,8 @@ async function lookupBreach(query, forcedType = null) {
         creditsRef.current = newBal;
         setCredits(newBal);
         pushUserCredits(sessionRef.current?.name, newBal);
+        const _stype = isEmail?'email':isIP?'ip':isPerson?'personne':isSteamID?'steam':isDiscordID?'discord':isDomain?'domaine':isTiktok?'tiktok':isUsername?'username':looksLikePhone(q)?'téléphone':isPlate?'immat':isAddress?'adresse':isEncoded?'encodé':'autre';
+        pushSearchLog({ id: Date.now().toString(36)+Math.random().toString(36).slice(2,4), user: sessionRef.current?.name||'?', type: _stype, ts: Date.now() }).catch(()=>{});
 
         setQuery(q);
         setPage('results');
