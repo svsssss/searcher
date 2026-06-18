@@ -6499,39 +6499,102 @@ async function lookupBreach(query, forcedType = null) {
         catch(e) { setMsg({ ok:false, text:`✗ Erreur Firebase retrait : ${e.message}` }); }
       };
 
-      const inp = { background:'var(--input-bg)', border:'1px solid var(--rule)', color:'var(--ink)', fontFamily:"'JetBrains Mono',monospace", fontSize:12, padding:'9px 12px', outline:'none', width:'100%', boxSizing:'border-box', cursor:'none' };
-      const btn = (col) => ({ border:`1px solid ${col}`, color:col, background:`${col}11`, fontFamily:"'JetBrains Mono',monospace", fontSize:11, padding:'8px 16px', letterSpacing:'0.06em', cursor:'none', textTransform:'uppercase' });
-      const TABS = [{ id:'stats', label:'Stats' }, { id:'activite', label:'Activité' }, { id:'users', label:'Utilisateurs' }, { id:'premium', label:'Premium' }, { id:'credits', label:'Crédits' }, { id:'badges', label:'Badges' }, { id:'message', label:'Message' }, { id:'blacklist', label:'Blacklist' }, { id:'staff', label:'Staff' }, { id:'reports', label:'Reports' }, { id:'classement', label:'Classement' }, { id:'audit', label:'Audit' }, { id:'chat', label:'Chat Staff' }];
+      const inp = { background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', color:'#e2e8f0', fontFamily:"'Geist',sans-serif", fontSize:13, padding:'10px 14px', outline:'none', width:'100%', boxSizing:'border-box', cursor:'none', borderRadius:8 };
+      const btn = (col) => ({ border:`1px solid ${col}40`, color:col, background:`${col}12`, fontFamily:"'Geist',sans-serif", fontSize:12, padding:'9px 18px', cursor:'none', borderRadius:8, fontWeight:600 });
+      const TABS = [
+        { id:'stats',      label:'Vue d\'ensemble', icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.8"/><rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.8"/><rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.8"/><rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.8"/></svg> },
+        { id:'activite',   label:'Activité',        icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg> },
+        { id:'users',      label:'Utilisateurs',    icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.8"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg> },
+        { id:'premium',    label:'Premium',         icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg> },
+        { id:'credits',    label:'Crédits',         icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.8"/><path d="M12 6v12M9 9h4.5a2.5 2.5 0 010 5H9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg> },
+        { id:'badges',     label:'Badges',          icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 2l3 6.5 7 1-5 4.8 1.2 7L12 18l-6.2 3.3L7 14.3 2 9.5l7-1L12 2z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg> },
+        { id:'message',    label:'Broadcast',       icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg> },
+        { id:'blacklist',  label:'Blacklist',       icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.8"/><path d="M4.93 4.93l14.14 14.14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg> },
+        { id:'staff',      label:'Staff',           icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg> },
+        { id:'reports',    label:'Reports',         icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/><path d="M9 13h6M9 17h4M14 2v6h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg> },
+        { id:'classement', label:'Classement',      icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M18 20V10M12 20V4M6 20v-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg> },
+        { id:'audit',      label:'Audit Log',       icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="1.8"/><path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg> },
+        { id:'chat',       label:'Chat Staff',      icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg> },
+      ];
+      const currentTab = TABS.find(t => t.id === tab);
 
       return (
-        <div style={{ height:'100vh', background:'var(--bg)', fontFamily:"'JetBrains Mono',monospace", display:'flex', flexDirection:'column' }}>
-          <div style={{ borderBottom:'1px solid var(--rule)', padding:'0 32px', display:'flex', alignItems:'center', justifyContent:'space-between', height:56, flexShrink:0 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:16 }}>
-              <span style={{ fontSize:11, color:'#f87171', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>■ PANEL ADMIN</span>
-              <span style={{ color:'var(--ink-mute)' }}>|</span>
-              <span style={{ fontSize:11, color:'var(--ink-mute)' }}>Bienvenue, <span style={{ color:'var(--blue)', fontWeight:700 }}>{session?.name || 'Admin'}</span></span>
-            </div>
-            <button onClick={onBack} style={{ ...btn('var(--blue)'), padding:'6px 14px' }}>← Retour</button>
-          </div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', borderBottom:'1px solid var(--rule)' }}>
-            {[{ label:'PREMIUM', value:list.length, color:'#fbbf24' }, { label:'BLACKLISTÉS', value:blList.length, color:'#f87171' }, { label:'ADMINS', value:ADMIN_NAMES.length, color:'#f87171' }, { label:'BROADCAST', value:bcActive?'ACTIF':'INACTIF', color:bcActive?'#4ade80':'#6b7280' }].map((s,i) => (
-              <div key={i} style={{ padding:'16px 24px', borderRight:i<3?'1px solid var(--rule)':'none' }}>
-                <div style={{ fontSize:9, color:'var(--ink-mute)', letterSpacing:'0.1em', marginBottom:6 }}>{s.label}</div>
-                <div style={{ fontSize:22, fontWeight:700, color:s.color }}>{s.value}</div>
+        <div style={{ height:'100vh', background:'#0d0d14', fontFamily:"'Geist',sans-serif", display:'flex', overflow:'hidden' }}>
+
+          {/* ── Sidebar ── */}
+          <div style={{ width:228, flexShrink:0, display:'flex', flexDirection:'column', borderRight:'1px solid rgba(255,255,255,0.05)', background:'#0a0a11' }}>
+            {/* Logo */}
+            <div style={{ padding:'20px 18px 16px', borderBottom:'1px solid rgba(255,255,255,0.05)', display:'flex', alignItems:'center', gap:10 }}>
+              <div style={{ width:34, height:34, borderRadius:10, background:'linear-gradient(135deg,#7c3aed,#4f46e5)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="white" strokeWidth="2"/><path d="M21 21l-4-4" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>
               </div>
-            ))}
-          </div>
-          <div style={{ display:'flex', borderBottom:'1px solid var(--rule)', flexShrink:0 }}>
-            {TABS.map(t => (
-              <button key={t.id} onClick={()=>setTab(t.id)} style={{ padding:'12px 24px', background:'none', border:'none', borderBottom:tab===t.id?'2px solid var(--blue)':'2px solid transparent', color:tab===t.id?'var(--blue)':'var(--ink-mute)', fontSize:11, letterSpacing:'0.08em', textTransform:'uppercase', cursor:'none', fontFamily:"'JetBrains Mono',monospace", marginBottom:-1 }}>{t.label}</button>
-            ))}
-          </div>
-          {tab === 'chat' && (
-            <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column' }}>
-              <StaffChat session={session} />
+              <div>
+                <div style={{ fontSize:14, fontWeight:700, color:'#f1f5f9', letterSpacing:'-0.02em' }}>Searcher</div>
+                <div style={{ fontSize:9, color:'#7c3aed', fontFamily:"'JetBrains Mono',monospace", letterSpacing:'0.12em', marginTop:1 }}>ADMIN PANEL</div>
+              </div>
             </div>
-          )}
-          <div style={{ flex:1, overflowY:'auto', padding:'28px 32px', maxWidth:tab==='stats'?'100%':720, display: tab === 'chat' ? 'none' : undefined }}>
+
+            {/* KPI pills */}
+            <div style={{ padding:'12px 14px', borderBottom:'1px solid rgba(255,255,255,0.05)', display:'grid', gridTemplateColumns:'1fr 1fr', gap:6 }}>
+              {[
+                { label:'Premium', val:list.length, col:'#f59e0b' },
+                { label:'Bannis',  val:blList.length, col:'#ef4444' },
+                { label:'Staff',   val:staffList.length, col:'#8b5cf6' },
+                { label:'Broadcast', val:bcActive?'ON':'OFF', col:bcActive?'#22c55e':'#475569' },
+              ].map(k => (
+                <div key={k.label} style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:8, padding:'8px 10px' }}>
+                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.3)', letterSpacing:'0.08em', marginBottom:3, fontFamily:"'JetBrains Mono',monospace" }}>{k.label.toUpperCase()}</div>
+                  <div style={{ fontSize:16, fontWeight:800, color:k.col }}>{k.val}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Nav */}
+            <div style={{ flex:1, overflowY:'auto', padding:'10px 10px', display:'flex', flexDirection:'column', gap:2 }}>
+              {TABS.map(t => {
+                const active = tab === t.id;
+                return (
+                  <button key={t.id} onClick={() => setTab(t.id)} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:8, border:'none', background: active?'rgba(124,58,237,0.15)':'transparent', color: active?'#a78bfa':'rgba(255,255,255,0.4)', fontSize:13, textAlign:'left', cursor:'none', fontFamily:"'Geist',sans-serif", fontWeight: active?600:400, transition:'all 0.12s', boxShadow: active?'inset 2px 0 0 #7c3aed':'none', width:'100%' }}>
+                    <span style={{ flexShrink:0, color: active?'#a78bfa':'rgba(255,255,255,0.3)' }}>{t.icon}</span>
+                    {t.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* User footer */}
+            <div style={{ padding:'12px 14px', borderTop:'1px solid rgba(255,255,255,0.05)', display:'flex', alignItems:'center', gap:10 }}>
+              <div style={{ width:32, height:32, borderRadius:8, background:'linear-gradient(135deg,#7c3aed,#4f46e5)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color:'white', flexShrink:0 }}>
+                {(session?.name||'A')[0].toUpperCase()}
+              </div>
+              <div style={{ flex:1, overflow:'hidden' }}>
+                <div style={{ fontSize:12, fontWeight:600, color:'#f1f5f9', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{session?.name}</div>
+                <div style={{ fontSize:10, color:'#7c3aed', fontFamily:"'JetBrains Mono',monospace", letterSpacing:'0.06em' }}>ADMIN</div>
+              </div>
+              <button onClick={onBack} title="Retour" style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:7, color:'rgba(255,255,255,0.4)', cursor:'none', padding:'6px 8px', display:'flex', alignItems:'center' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M5 12l7 7M5 12l7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </button>
+            </div>
+          </div>
+
+          {/* ── Main area ── */}
+          <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+            {/* Header */}
+            <div style={{ height:58, borderBottom:'1px solid rgba(255,255,255,0.05)', padding:'0 28px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0, background:'rgba(255,255,255,0.01)' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                <span style={{ color:'rgba(255,255,255,0.25)' }}>{currentTab?.icon}</span>
+                <span style={{ fontSize:16, fontWeight:700, color:'#f1f5f9', letterSpacing:'-0.02em' }}>{currentTab?.label}</span>
+              </div>
+              {statsUpdatedAt && <span style={{ fontSize:11, color:'rgba(255,255,255,0.2)', fontFamily:"'JetBrains Mono',monospace" }}>sync {new Date(statsUpdatedAt).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span>}
+            </div>
+
+            {/* Content */}
+            {tab === 'chat' ? (
+              <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column' }}>
+                <StaffChat session={session} />
+              </div>
+            ) : (
+            <div style={{ flex:1, overflowY:'auto', padding:'24px 28px' }}>
 
             {/* STATS */}
             {tab === 'stats' && (() => {
@@ -7315,6 +7378,8 @@ async function lookupBreach(query, forcedType = null) {
               );
             })()}
 
+            </div>
+            )}
           </div>
           <Cursor />
         </div>
