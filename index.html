@@ -9691,9 +9691,15 @@ async function lookupBreach(query, forcedType = null) {
             if (password.length < 6) throw new Error('Mot de passe : 6 caractères minimum.');
             user = await registerUser(name, email, password);
             await pushUsers(getUsers());
+            updateLeaderboardEntry({ name: user.name, email: user.email }, { total: 0 }, defaultPublicProfile()).catch(() => {});
           } else {
             await fetchLeaderboard();
             user = await loginUser(email, password);
+            // Crée l'entrée si elle n'existe pas encore (anciens comptes)
+            const lb = await fetchLeaderboard();
+            if (!lb.filter(e => !e.action).find(e => (e.name||'').toLowerCase() === user.name.toLowerCase())) {
+              updateLeaderboardEntry({ name: user.name, email: user.email }, { total: 0 }, defaultPublicProfile()).catch(() => {});
+            }
           }
           const session = { name: user.name, email: user.email };
           saveSession(session);
@@ -10493,8 +10499,8 @@ async function lookupBreach(query, forcedType = null) {
 
       useEffect(() => {
         fbGet().then(data => {
-          const lb       = fbToArray(data.leaderboard);
-          const premL    = fbToArray(data.premiumList);
+          const lb       = fbToArray(data.entries);
+          const premL    = fbToArray(data.premiumUsers);
           const staffL   = fbToArray(data.staffList);
           let entry      = lb.filter(e => !e.action).find(e => (e.name||'').toLowerCase() === slug.toLowerCase());
           const isAdmU   = ADMIN_NAMES.some(a => a.toLowerCase() === slug.toLowerCase());
