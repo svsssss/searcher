@@ -10352,9 +10352,9 @@ async function lookupBreach(query, forcedType = null) {
               })}
             </div>
 
-            {/* Chat (always visible at bottom) */}
-            <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column', borderTop:'1px solid rgba(255,255,255,0.05)', marginTop:6 }}>
-              <div style={{ padding:'10px 14px 8px', fontSize:9, color:'rgba(255,255,255,0.25)', fontFamily:"'JetBrains Mono',monospace", letterSpacing:'0.12em', flexShrink:0 }}>
+            {/* Chat (fixed height at bottom of sidebar) */}
+            <div style={{ height:280, flexShrink:0, display:'flex', flexDirection:'column', borderTop:'1px solid rgba(255,255,255,0.05)', marginTop:4 }}>
+              <div style={{ padding:'8px 14px 6px', fontSize:9, color:'rgba(255,255,255,0.25)', fontFamily:"'JetBrains Mono',monospace", letterSpacing:'0.12em', flexShrink:0 }}>
                 CHAT STAFF
               </div>
               <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column' }}>
