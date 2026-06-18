@@ -10236,35 +10236,39 @@ async function lookupBreach(query, forcedType = null) {
       const roleBadge = r => r === 'admin' ? '★ Admin' : '⚑ Staff';
 
       return (
-        <div style={{ display:'flex', flexDirection:'column', flex:1, minHeight:0, background:'var(--ink-faint)', border:'1px solid var(--rule)' }}>
-          <div style={{ padding:'10px 16px', borderBottom:'1px solid var(--rule)', fontSize:9, ..._staffMono, color:'var(--ink-mute)', letterSpacing:'0.12em', flexShrink:0 }}>
+        <div style={{ display:'flex', flexDirection:'column', flex:1, minHeight:0, background:'#0a0a11' }}>
+          <div style={{ padding:'11px 16px', borderBottom:'1px solid rgba(255,255,255,0.06)', fontSize:9, fontFamily:"'JetBrains Mono',monospace", color:'rgba(255,255,255,0.25)', letterSpacing:'0.14em', flexShrink:0, display:'flex', alignItems:'center', gap:6 }}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="rgba(255,255,255,0.35)" strokeWidth="2" strokeLinejoin="round"/></svg>
             CHAT STAFF — TEMPS RÉEL
           </div>
-          <div className="chat-scroll" style={{ flex:1, minHeight:0, overflowY:'auto', padding:'12px 16px', display:'flex', flexDirection:'column', gap:10 }}>
+          <div className="chat-scroll" style={{ flex:1, minHeight:0, overflowY:'auto', padding:'14px 16px', display:'flex', flexDirection:'column', gap:12 }}>
             {msgs.length === 0 && (
-              <div style={{ fontSize:11, color:'var(--ink-mute)', textAlign:'center', padding:'30px 0', ..._staffMono }}>Aucun message.</div>
+              <div style={{ fontSize:11, color:'rgba(255,255,255,0.2)', textAlign:'center', padding:'30px 0', fontFamily:"'JetBrains Mono',monospace" }}>Aucun message.</div>
             )}
-            {msgs.map(m => (
-              <div key={m.id} style={{ display:'flex', flexDirection:'column', gap:3 }}>
-                <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap' }}>
-                  <span style={{ fontSize:9, color:'var(--blue)', background:'rgba(0,0,0,0.2)', padding:'1px 7px', letterSpacing:'0.06em', ..._staffMono, flexShrink:0 }}>{roleBadge(m.senderRole)}</span>
-                  <span style={{ fontSize:12, color:'var(--ink)', ..._staffMono, fontWeight:600 }}>{m.sender}</span>
-                  <span style={{ fontSize:9, color:'var(--ink-mute)', marginLeft:'auto', ..._staffMono }}>{new Date(m.ts).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</span>
+            {msgs.map(m => {
+              const isAdmin = m.senderRole === 'admin';
+              return (
+                <div key={m.id} style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                  <div style={{ display:'flex', gap:7, alignItems:'center' }}>
+                    <span style={{ fontSize:9, color: isAdmin?'#a78bfa':'#60a5fa', background: isAdmin?'rgba(124,58,237,0.15)':'rgba(37,99,255,0.12)', padding:'2px 7px', borderRadius:4, letterSpacing:'0.07em', fontFamily:"'JetBrains Mono',monospace", flexShrink:0, border:`1px solid ${isAdmin?'rgba(124,58,237,0.25)':'rgba(37,99,255,0.2)'}` }}>{roleBadge(m.senderRole)}</span>
+                    <span style={{ fontSize:12, color:'#e2e8f0', fontFamily:"'Geist',sans-serif", fontWeight:600 }}>{m.sender}</span>
+                    <span style={{ fontSize:9, color:'rgba(255,255,255,0.2)', marginLeft:'auto', fontFamily:"'JetBrains Mono',monospace" }}>{new Date(m.ts).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</span>
+                  </div>
+                  <div style={{ fontSize:13, color:'rgba(255,255,255,0.65)', lineHeight:1.55, fontFamily:"'Geist',sans-serif", paddingLeft:2 }}>{m.text}</div>
                 </div>
-                <div style={{ fontSize:12, color:'var(--ink-soft)', lineHeight:1.5, fontFamily:"'Geist',sans-serif", paddingLeft:2 }}>{m.text}</div>
-              </div>
-            ))}
+              );
+            })}
             <div ref={bottomRef} />
           </div>
-          <div style={{ padding:'10px 12px', borderTop:'1px solid var(--rule)', display:'flex', gap:8, flexShrink:0 }}>
+          <div style={{ padding:'10px 12px', borderTop:'1px solid rgba(255,255,255,0.06)', display:'flex', gap:8, flexShrink:0 }}>
             <input
-              style={{ ..._staffInp, flex:1, width:'auto', padding:'8px 12px' }}
+              style={{ flex:1, width:'auto', padding:'9px 13px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', color:'#e2e8f0', fontFamily:"'Geist',sans-serif", fontSize:13, outline:'none', borderRadius:8, cursor:'none' }}
               placeholder="Message…"
               value={text}
               onChange={e => setText(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
             />
-            <button onClick={send} style={{ ..._staffBtn('var(--blue)'), padding:'8px 16px', flexShrink:0 }}>→</button>
+            <button onClick={send} style={{ background:'rgba(37,99,255,0.15)', border:'1px solid rgba(37,99,255,0.3)', color:'#60a5fa', borderRadius:8, padding:'9px 14px', cursor:'none', fontSize:14, flexShrink:0 }}>→</button>
           </div>
         </div>
       );
@@ -10297,53 +10301,119 @@ async function lookupBreach(query, forcedType = null) {
         setReports(updated); await pushReports(updated);
       };
 
-      const STAFF_TABS = [{ id:'reports', label:'Signalements' }, { id:'users', label:'Utilisateurs' }];
+      const STAFF_TABS = [
+        { id:'reports', label:'Signalements', badge: visibleReports.length + myEscalated.length,
+          icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/><path d="M9 13h6M9 17h4M14 2v6h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg> },
+        { id:'users', label:'Utilisateurs',
+          icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.8"/></svg> },
+      ];
+      const currentStaffTab = STAFF_TABS.find(t => t.id === tab);
 
       return (
-        <div style={{ height:'100vh', background:'var(--bg)', ..._staffMono, display:'flex', flexDirection:'column', cursor:'none' }}>
-          {/* Header */}
-          <div style={{ borderBottom:'1px solid var(--rule)', padding:'0 32px', display:'flex', alignItems:'center', justifyContent:'space-between', height:56, flexShrink:0 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:16 }}>
-              <span style={{ fontSize:11, color:'var(--blue)', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>■ PANEL STAFF</span>
-              <span style={{ color:'var(--ink-mute)' }}>|</span>
-              <span style={{ fontSize:11, color:'var(--ink-mute)' }}>Bienvenue, <span style={{ color:'var(--blue)', fontWeight:700 }}>{session?.name}</span></span>
-            </div>
-            <button onClick={onBack} style={{ ..._staffBtn('var(--blue)'), padding:'6px 14px' }}>← Retour</button>
-          </div>
-          {/* Two-column body */}
-          <div style={{ flex:1, minHeight:0, display:'flex', overflow:'hidden' }}>
-            {/* Left: tabs + content */}
-            <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column' }}>
-              {/* Tab bar */}
-              <div style={{ display:'flex', borderBottom:'1px solid var(--rule)', flexShrink:0 }}>
-                {STAFF_TABS.map(t => (
-                  <button key={t.id} onClick={() => setTab(t.id)} style={{ padding:'10px 22px', background:'none', border:'none', borderBottom:tab===t.id?'2px solid var(--blue)':'2px solid transparent', color:tab===t.id?'var(--blue)':'var(--ink-mute)', fontSize:11, letterSpacing:'0.08em', textTransform:'uppercase', cursor:'none', ..._staffMono, marginBottom:-1 }}>{t.label}</button>
-                ))}
+        <div style={{ height:'100vh', background:'#0d0d14', fontFamily:"'Geist',sans-serif", display:'flex', overflow:'hidden', cursor:'none' }}>
+
+          {/* ── Sidebar ── */}
+          <div style={{ width:220, flexShrink:0, display:'flex', flexDirection:'column', borderRight:'1px solid rgba(255,255,255,0.05)', background:'#0a0a11' }}>
+            {/* Logo */}
+            <div style={{ padding:'20px 18px 16px', borderBottom:'1px solid rgba(255,255,255,0.05)', display:'flex', alignItems:'center', gap:10 }}>
+              <div style={{ width:34, height:34, borderRadius:10, background:'linear-gradient(135deg,#1d4ed8,#0ea5e9)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="white" strokeWidth="2" strokeLinejoin="round"/></svg>
               </div>
-              {/* Signalements */}
-              {tab === 'reports' && (
-                <div style={{ flex:1, overflowY:'auto', padding:'28px 32px' }}>
-                  {visibleReports.length === 0 && myEscalated.length === 0 && (
-                    <div style={{ fontSize:12, color:'rgba(192,132,252,0.45)', textAlign:'center', padding:'40px 0' }}>Aucun signalement en attente.</div>
-                  )}
-                  {visibleReports.length > 0 && (<>
-                    <div style={{ fontSize:9, color:'rgba(56,189,248,0.5)', letterSpacing:'0.1em', marginBottom:14 }}>SIGNALEMENTS OUVERTS — {visibleReports.length}</div>
-                    <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:24 }}>
-                      {visibleReports.map(r => (
-                        <StaffReportCard key={r.id} r={r} showEscalate={true} noteMap={noteMap} setNoteMap={setNoteMap} escalate={escalate} closeReport={closeReport} />
-                      ))}
-                    </div>
-                  </>)}
-                  {myEscalated.length > 0 && (<>
-                    <div style={{ fontSize:9, color:'rgba(251,191,36,0.5)', letterSpacing:'0.1em', marginBottom:14 }}>ESCALADÉS VERS ADMIN — {myEscalated.length}</div>
-                    <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                      {myEscalated.map(r => (
-                        <StaffReportCard key={r.id} r={r} showEscalate={false} noteMap={noteMap} setNoteMap={setNoteMap} escalate={escalate} closeReport={closeReport} />
-                      ))}
-                    </div>
-                  </>)}
+              <div>
+                <div style={{ fontSize:14, fontWeight:700, color:'#f1f5f9', letterSpacing:'-0.02em' }}>Searcher</div>
+                <div style={{ fontSize:9, color:'#3b82f6', fontFamily:"'JetBrains Mono',monospace", letterSpacing:'0.12em', marginTop:1 }}>STAFF PANEL</div>
+              </div>
+            </div>
+
+            {/* KPI pills */}
+            <div style={{ padding:'12px 14px', borderBottom:'1px solid rgba(255,255,255,0.05)', display:'grid', gridTemplateColumns:'1fr 1fr', gap:6 }}>
+              {[
+                { label:'Ouverts',   val:visibleReports.length, col:'#ef4444' },
+                { label:'Escaladés', val:myEscalated.length,    col:'#f59e0b' },
+              ].map(k => (
+                <div key={k.label} style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:8, padding:'8px 10px' }}>
+                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.3)', letterSpacing:'0.08em', marginBottom:3, fontFamily:"'JetBrains Mono',monospace" }}>{k.label.toUpperCase()}</div>
+                  <div style={{ fontSize:16, fontWeight:800, color:k.col }}>{k.val}</div>
                 </div>
-              )}
+              ))}
+            </div>
+
+            {/* Nav */}
+            <div style={{ padding:'10px 10px', display:'flex', flexDirection:'column', gap:2 }}>
+              {STAFF_TABS.map(t => {
+                const active = tab === t.id;
+                return (
+                  <button key={t.id} onClick={() => setTab(t.id)} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:8, border:'none', background:active?'rgba(37,99,255,0.15)':'transparent', color:active?'#60a5fa':'rgba(255,255,255,0.4)', fontSize:13, textAlign:'left', cursor:'none', fontFamily:"'Geist',sans-serif", fontWeight:active?600:400, boxShadow:active?'inset 2px 0 0 #3b82f6':'none', width:'100%' }}>
+                    <span style={{ flexShrink:0, color:active?'#60a5fa':'rgba(255,255,255,0.3)' }}>{t.icon}</span>
+                    <span style={{ flex:1 }}>{t.label}</span>
+                    {t.badge > 0 && <span style={{ background:'#ef4444', color:'white', fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:10, fontFamily:"'JetBrains Mono',monospace" }}>{t.badge}</span>}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Chat (always visible at bottom) */}
+            <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column', borderTop:'1px solid rgba(255,255,255,0.05)', marginTop:6 }}>
+              <div style={{ padding:'10px 14px 8px', fontSize:9, color:'rgba(255,255,255,0.25)', fontFamily:"'JetBrains Mono',monospace", letterSpacing:'0.12em', flexShrink:0 }}>
+                CHAT STAFF
+              </div>
+              <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column' }}>
+                <StaffChat session={session} />
+              </div>
+            </div>
+
+            {/* User footer */}
+            <div style={{ padding:'12px 14px', borderTop:'1px solid rgba(255,255,255,0.05)', display:'flex', alignItems:'center', gap:10, flexShrink:0 }}>
+              <div style={{ width:32, height:32, borderRadius:8, background:'linear-gradient(135deg,#1d4ed8,#0ea5e9)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color:'white', flexShrink:0 }}>
+                {(session?.name||'S')[0].toUpperCase()}
+              </div>
+              <div style={{ flex:1, overflow:'hidden' }}>
+                <div style={{ fontSize:12, fontWeight:600, color:'#f1f5f9', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{session?.name}</div>
+                <div style={{ fontSize:10, color:'#3b82f6', fontFamily:"'JetBrains Mono',monospace", letterSpacing:'0.06em' }}>STAFF</div>
+              </div>
+              <button onClick={onBack} title="Retour" style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:7, color:'rgba(255,255,255,0.4)', cursor:'none', padding:'6px 8px', display:'flex', alignItems:'center' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M5 12l7 7M5 12l7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </button>
+            </div>
+          </div>
+
+          {/* ── Main area ── */}
+          <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+            {/* Header */}
+            <div style={{ height:58, borderBottom:'1px solid rgba(255,255,255,0.05)', padding:'0 28px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0, background:'rgba(255,255,255,0.01)' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                <span style={{ color:'rgba(255,255,255,0.25)' }}>{currentStaffTab?.icon}</span>
+                <span style={{ fontSize:16, fontWeight:700, color:'#f1f5f9', letterSpacing:'-0.02em' }}>{currentStaffTab?.label}</span>
+                {currentStaffTab?.badge > 0 && <span style={{ background:'rgba(239,68,68,0.15)', border:'1px solid rgba(239,68,68,0.3)', color:'#ef4444', fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:6, fontFamily:"'JetBrains Mono',monospace" }}>{currentStaffTab.badge} en attente</span>}
+              </div>
+            </div>
+
+            {/* Tab content */}
+            <div style={{ flex:1, overflowY:'auto', padding:'24px 28px' }}>
+
+              {/* Signalements */}
+              {tab === 'reports' && (<>
+                {visibleReports.length === 0 && myEscalated.length === 0 && (
+                  <div style={{ fontSize:13, color:'rgba(255,255,255,0.2)', textAlign:'center', padding:'60px 0', fontFamily:"'JetBrains Mono',monospace" }}>Aucun signalement en attente.</div>
+                )}
+                {visibleReports.length > 0 && (<>
+                  <div style={{ fontSize:9, color:'rgba(239,68,68,0.6)', letterSpacing:'0.12em', marginBottom:14, fontFamily:"'JetBrains Mono',monospace" }}>SIGNALEMENTS OUVERTS — {visibleReports.length}</div>
+                  <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:28 }}>
+                    {visibleReports.map(r => (
+                      <StaffReportCard key={r.id} r={r} showEscalate={true} noteMap={noteMap} setNoteMap={setNoteMap} escalate={escalate} closeReport={closeReport} />
+                    ))}
+                  </div>
+                </>)}
+                {myEscalated.length > 0 && (<>
+                  <div style={{ fontSize:9, color:'rgba(251,191,36,0.6)', letterSpacing:'0.12em', marginBottom:14, fontFamily:"'JetBrains Mono',monospace" }}>ESCALADÉS VERS ADMIN — {myEscalated.length}</div>
+                  <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                    {myEscalated.map(r => (
+                      <StaffReportCard key={r.id} r={r} showEscalate={false} noteMap={noteMap} setNoteMap={setNoteMap} escalate={escalate} closeReport={closeReport} />
+                    ))}
+                  </div>
+                </>)}
+              </>)}
+
               {/* Utilisateurs */}
               {tab === 'users' && (() => {
                 const entries    = loadLeaderboard();
@@ -10356,16 +10426,15 @@ async function lookupBreach(query, forcedType = null) {
                   ? entries.filter(e => (e.name||'').toLowerCase().includes(q) || (e.uid||'').toLowerCase().includes(q))
                   : [];
                 const tag = (label, col) => (
-                  <span style={{ fontSize:9, background:`${col}18`, color:col, padding:'2px 8px', letterSpacing:'0.08em', ..._staffMono }}>{label}</span>
+                  <span style={{ fontSize:9, background:`${col}18`, color:col, padding:'2px 8px', borderRadius:4, letterSpacing:'0.08em', fontFamily:"'JetBrains Mono',monospace", border:`1px solid ${col}28` }}>{label}</span>
                 );
                 const ACTION_LABEL = { rate_limit:'RATE LIMIT', lb_remove:'RETRAIT LB', lb_adjust:'AJUST. LB', lb_reset:'RESET LB', force_logout:'FORCE-LOGOUT' };
                 const ACTION_COLOR = { rate_limit:'#fbbf24', lb_remove:'#f87171', lb_adjust:'#38bdf8', lb_reset:'#f87171', force_logout:'#f87171' };
                 return (
-                  <div style={{ flex:1, overflowY:'auto', padding:'28px 32px', display:'flex', flexDirection:'column', gap:14 }}>
-                    <div style={{ fontSize:9, color:'rgba(56,189,248,0.45)', letterSpacing:'0.1em', ..._staffMono }}>RECHERCHER UN UTILISATEUR</div>
-                    <input style={_staffInp} placeholder="Pseudo ou UID (min 2 caractères)…" value={userQ} onChange={e => setUserQ(e.target.value)} />
+                  <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+                    <input style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', color:'#e2e8f0', fontFamily:"'Geist',sans-serif", fontSize:13, padding:'10px 14px', outline:'none', borderRadius:8, cursor:'none', width:'100%', boxSizing:'border-box' }} placeholder="Pseudo ou UID (min 2 caractères)…" value={userQ} onChange={e => setUserQ(e.target.value)} />
                     {q.length >= 2 && matched.length === 0 && (
-                      <div style={{ padding:'20px 0', fontSize:12, color:'rgba(192,132,252,0.25)', textAlign:'center', ..._staffMono }}>Aucun utilisateur trouvé.</div>
+                      <div style={{ padding:'20px 0', fontSize:13, color:'rgba(255,255,255,0.2)', textAlign:'center', fontFamily:"'JetBrains Mono',monospace" }}>Aucun utilisateur trouvé.</div>
                     )}
                     {matched.map(e => {
                       const isPrem   = premiumL.some(n => n.toLowerCase() === (e.name||'').toLowerCase());
@@ -10375,49 +10444,46 @@ async function lookupBreach(query, forcedType = null) {
                       const forced   = loadForcedLogouts().some(f => f.uid === e.uid || (f.name||'').toLowerCase() === (e.name||'').toLowerCase());
                       const userAudit = auditL.filter(a => a.uid === e.uid || (a.name||'').toLowerCase() === (e.name||'').toLowerCase()).slice(0,5);
                       return (
-                        <div key={e.uid} style={{ border:'1px solid rgba(56,189,248,0.12)', background:'rgba(13,13,24,0.6)', padding:18, display:'flex', flexDirection:'column', gap:12 }}>
-                          {/* Header */}
+                        <div key={e.uid} style={{ border:'1px solid rgba(255,255,255,0.07)', background:'rgba(255,255,255,0.02)', padding:18, borderRadius:12, display:'flex', flexDirection:'column', gap:14 }}>
                           <div style={{ display:'flex', alignItems:'center', gap:12 }}>
                             {e.avatar
-                              ? <img src={e.avatar} alt="" style={{ width:46, height:46, borderRadius:'50%', objectFit:'cover', border:'2px solid rgba(56,189,248,0.2)' }} />
-                              : <div style={{ width:46, height:46, borderRadius:'50%', background:'rgba(56,189,248,0.1)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, color:'#38bdf8' }}>{(e.name||'?')[0].toUpperCase()}</div>
+                              ? <img src={e.avatar} alt="" style={{ width:46, height:46, borderRadius:10, objectFit:'cover', border:'2px solid rgba(255,255,255,0.1)' }} />
+                              : <div style={{ width:46, height:46, borderRadius:10, background:'rgba(37,99,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, color:'#60a5fa', fontWeight:800, border:'1px solid rgba(37,99,255,0.2)' }}>{(e.name||'?')[0].toUpperCase()}</div>
                             }
                             <div style={{ flex:1, display:'flex', flexDirection:'column', gap:5 }}>
                               <div style={{ display:'flex', alignItems:'center', gap:7, flexWrap:'wrap' }}>
-                                <span style={{ fontSize:14, fontWeight:700, color:'#e2e8f0', ..._staffMono }}>{e.name}</span>
-                                {isAdmU   && tag('ADMIN',         '#f87171')}
-                                {isStaffU && tag('STAFF',         '#38bdf8')}
-                                {isPrem   && tag('PREMIUM',       '#fbbf24')}
-                                {blEntry  && tag('BLACKLISTÉ',    '#f87171')}
-                                {forced   && tag('FORCE-LOGOUT',  '#f87171')}
+                                <span style={{ fontSize:14, fontWeight:700, color:'#f1f5f9' }}>{e.name}</span>
+                                {isAdmU   && tag('ADMIN',        '#f87171')}
+                                {isStaffU && tag('STAFF',        '#60a5fa')}
+                                {isPrem   && tag('PREMIUM',      '#fbbf24')}
+                                {blEntry  && tag('BLACKLISTÉ',   '#f87171')}
+                                {forced   && tag('FORCE-LOGOUT', '#f87171')}
                               </div>
-                              <span style={{ fontSize:10, color:'rgba(192,132,252,0.4)', ..._staffMono }}>UID : {e.uid}</span>
+                              <span style={{ fontSize:10, color:'rgba(255,255,255,0.25)', fontFamily:"'JetBrains Mono',monospace" }}>UID : {e.uid}</span>
                             </div>
                           </div>
-                          {/* Stats */}
-                          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:7 }}>
+                          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
                             {[
-                              ['Recherches', (e.searchCount||0).toLocaleString('fr-FR'), '#c084fc'],
+                              ['Recherches', (e.searchCount||0).toLocaleString('fr-FR'), '#a78bfa'],
                               ['Likes',      (e.likes||0).toLocaleString('fr-FR'),       '#f472b6'],
                               ['Dernière activité', e.updatedAt ? new Date(e.updatedAt).toLocaleDateString('fr-FR') : '—', '#94a3b8'],
                             ].map(([label, value, color]) => (
-                              <div key={label} style={{ background:'rgba(0,0,0,0.3)', padding:'8px 10px', border:'1px solid rgba(255,255,255,0.05)' }}>
-                                <div style={{ fontSize:8, color:'rgba(192,132,252,0.4)', letterSpacing:'0.08em', ..._staffMono, marginBottom:3 }}>{label.toUpperCase()}</div>
-                                <div style={{ fontSize:11, color, fontWeight:600, ..._staffMono }}>{value}</div>
+                              <div key={label} style={{ background:'rgba(255,255,255,0.03)', padding:'10px 12px', borderRadius:8, border:'1px solid rgba(255,255,255,0.06)' }}>
+                                <div style={{ fontSize:9, color:'rgba(255,255,255,0.25)', letterSpacing:'0.08em', fontFamily:"'JetBrains Mono',monospace", marginBottom:4 }}>{label.toUpperCase()}</div>
+                                <div style={{ fontSize:13, color, fontWeight:700 }}>{value}</div>
                               </div>
                             ))}
                           </div>
-                          {/* Audit récent */}
                           {userAudit.length > 0 && (
-                            <div>
-                              <div style={{ fontSize:9, color:'rgba(192,132,252,0.4)', letterSpacing:'0.08em', ..._staffMono, marginBottom:6 }}>AUDIT RÉCENT</div>
+                            <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                              <div style={{ fontSize:9, color:'rgba(255,255,255,0.25)', letterSpacing:'0.1em', fontFamily:"'JetBrains Mono',monospace", marginBottom:4 }}>AUDIT RÉCENT</div>
                               {userAudit.map(a => {
-                                const col = ACTION_COLOR[a.action] || '#c084fc';
+                                const col = ACTION_COLOR[a.action] || '#a78bfa';
                                 return (
-                                  <div key={a.id} style={{ display:'grid', gridTemplateColumns:'100px 85px 1fr', gap:6, padding:'4px 6px', borderBottom:'1px solid rgba(255,255,255,0.04)', ..._staffMono, fontSize:10 }}>
-                                    <span style={{ color:'rgba(255,255,255,0.3)' }}>{new Date(a.ts).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>
-                                    <span style={{ background:`${col}18`, color:col, padding:'1px 5px', textAlign:'center' }}>{ACTION_LABEL[a.action]||a.action.toUpperCase()}</span>
-                                    <span style={{ color:'rgba(255,255,255,0.5)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{a.detail}</span>
+                                  <div key={a.id} style={{ display:'grid', gridTemplateColumns:'100px 90px 1fr', gap:8, padding:'5px 8px', borderRadius:6, background:'rgba(255,255,255,0.02)', fontSize:10, fontFamily:"'JetBrains Mono',monospace" }}>
+                                    <span style={{ color:'rgba(255,255,255,0.25)' }}>{new Date(a.ts).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>
+                                    <span style={{ background:`${col}18`, color:col, padding:'1px 5px', textAlign:'center', borderRadius:4, border:`1px solid ${col}28` }}>{ACTION_LABEL[a.action]||a.action.toUpperCase()}</span>
+                                    <span style={{ color:'rgba(255,255,255,0.45)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{a.detail}</span>
                                   </div>
                                 );
                               })}
@@ -10429,10 +10495,7 @@ async function lookupBreach(query, forcedType = null) {
                   </div>
                 );
               })()}
-            </div>
-            {/* Right: chat */}
-            <div style={{ width:340, flexShrink:0, borderLeft:'1px solid rgba(192,132,252,0.1)', display:'flex', flexDirection:'column', minHeight:0 }}>
-              <StaffChat session={session} />
+
             </div>
           </div>
           <Cursor />
