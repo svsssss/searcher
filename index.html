@@ -7164,6 +7164,10 @@ async function lookupBreach(query, forcedType = null) {
                           </div>
                         </div>
                         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                          <button onClick={async () => {
+                            await updateLeaderboardEntry({ name: u.name, email: u.email }, { total: 0 }, defaultPublicProfile());
+                            setUserMsg({ ok:true, text:`✓ Profil public de ${u.name} créé sur searcher.bz/${u.name}` });
+                          }} style={{ ...btn('#a78bfa'), fontSize:10 }}>🌐 Créer profil</button>
                           {!blEntry
                             ? <button onClick={async () => {
                                 const newBl = [...blList, { name:u.name, reason:'Admin — via recherche user', expiresAt:null }];
@@ -9714,7 +9718,7 @@ async function lookupBreach(query, forcedType = null) {
             if (password.length < 6) throw new Error('Mot de passe : 6 caractères minimum.');
             user = await registerUser(name, email, password);
             await pushUsers(getUsers());
-            updateLeaderboardEntry({ name: user.name, email: user.email }, { total: 0 }, defaultPublicProfile()).catch(() => {});
+            await updateLeaderboardEntry({ name: user.name, email: user.email }, { total: 0 }, defaultPublicProfile()).catch(() => {});
           } else {
             await fetchLeaderboard();
             user = await loginUser(email, password);
