@@ -10496,7 +10496,7 @@ async function lookupBreach(query, forcedType = null) {
           const lb       = fbToArray(data.leaderboard);
           const premL    = fbToArray(data.premiumList);
           const staffL   = fbToArray(data.staffList);
-          let entry      = lb.find(e => (e.name||'').toLowerCase() === slug.toLowerCase());
+          let entry      = lb.filter(e => !e.action).find(e => (e.name||'').toLowerCase() === slug.toLowerCase());
           const isAdmU   = ADMIN_NAMES.some(a => a.toLowerCase() === slug.toLowerCase());
           const isStaffU = staffL.some(s => s.toLowerCase() === slug.toLowerCase());
           const isPrem   = premL.some(n => n.toLowerCase() === slug.toLowerCase());
