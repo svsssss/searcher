@@ -7261,7 +7261,10 @@ async function lookupBreach(query, forcedType = null) {
                             <div style={{ width:32, height:32, borderRadius:8, background:`${col}22`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color:col, flexShrink:0 }}>
                               {(entry.user||'?')[0].toUpperCase()}
                             </div>
-                            <span style={{ fontSize:12, color:'rgba(255,255,255,0.8)', fontFamily:"'Geist',sans-serif", overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{entry.user}</span>
+                            <div style={{ overflow:'hidden' }}>
+                              <span style={{ fontSize:12, color:'rgba(255,255,255,0.85)', fontFamily:"'Geist',sans-serif", fontWeight:600 }}>{entry.user}</span>
+                              {entry.q && <span style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginLeft:8, fontFamily:"'JetBrains Mono',monospace", overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>→ {entry.q}</span>}
+                            </div>
                             <span style={{ fontSize:10, padding:'2px 9px', background:`${col}18`, color:col, border:`1px solid ${col}33`, borderRadius:99, ...mono, letterSpacing:'0.04em', flexShrink:0 }}>{entry.type}</span>
                             <span style={{ fontSize:10, color:'rgba(255,255,255,0.25)', ...mono, minWidth:26, textAlign:'right', flexShrink:0 }}>{timeAgo(entry.ts)}</span>
                           </div>
@@ -10676,7 +10679,7 @@ async function lookupBreach(query, forcedType = null) {
             setBrixhubResult(null); setSteamResult(null); setMcResult(null);
 
             addToHistory(q, 'multi'); addStat('person');
-            pushSearchLog({ id: Date.now().toString(36)+Math.random().toString(36).slice(2,4), user: sessionRef.current?.name||'?', type:'multi', ts: Date.now() }).catch(()=>{});
+            pushSearchLog({ id: Date.now().toString(36)+Math.random().toString(36).slice(2,4), user: sessionRef.current?.name||'?', type:'multi', q, ts: Date.now() }).catch(()=>{});
             if (multi.name)  setPersonResult(primaryQ);
             if (multi.phone) setPhoneResult(validatePhone(multi.phone));
             if (multi.email) setEmailResult(multi.email);
@@ -10752,7 +10755,7 @@ async function lookupBreach(query, forcedType = null) {
         setCredits(newBal);
         pushUserCredits(sessionRef.current?.name, newBal);
         const _stype = isEmail?'email':isIP?'ip':isPerson?'personne':isSteamID?'steam':isDiscordID?'discord':isDomain?'domaine':isTiktok?'tiktok':isUsername?'username':looksLikePhone(q)?'téléphone':isPlate?'immat':isAddress?'adresse':isEncoded?'encodé':'autre';
-        pushSearchLog({ id: Date.now().toString(36)+Math.random().toString(36).slice(2,4), user: sessionRef.current?.name||'?', type: _stype, ts: Date.now() }).catch(()=>{});
+        pushSearchLog({ id: Date.now().toString(36)+Math.random().toString(36).slice(2,4), user: sessionRef.current?.name||'?', type: _stype, q, ts: Date.now() }).catch(()=>{});
 
         setQuery(q);
         setPage('results');
