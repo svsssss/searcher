@@ -10496,11 +10496,15 @@ async function lookupBreach(query, forcedType = null) {
           const lb       = fbToArray(data.leaderboard);
           const premL    = fbToArray(data.premiumList);
           const staffL   = fbToArray(data.staffList);
-          const entry    = lb.find(e => (e.name||'').toLowerCase() === slug.toLowerCase());
+          let entry      = lb.find(e => (e.name||'').toLowerCase() === slug.toLowerCase());
+          const isAdmU   = ADMIN_NAMES.some(a => a.toLowerCase() === slug.toLowerCase());
+          const isStaffU = staffL.some(s => s.toLowerCase() === slug.toLowerCase());
+          const isPrem   = premL.some(n => n.toLowerCase() === slug.toLowerCase());
+          // If not in leaderboard but known (admin/staff/premium), create minimal entry
+          if (!entry && (isAdmU || isStaffU || isPrem)) {
+            entry = { name: slug, searchCount: 0, likes: 0 };
+          }
           if (!entry) { setNotFound(true); setLoading(false); return; }
-          const isPrem   = premL.some(n => n.toLowerCase() === (entry.name||'').toLowerCase());
-          const isStaffU = staffL.some(s => s.toLowerCase() === (entry.name||'').toLowerCase());
-          const isAdmU   = ADMIN_NAMES.some(a => a.toLowerCase() === (entry.name||'').toLowerCase());
           setUser({ ...entry, isPrem, isStaffU, isAdmU });
           setLoading(false);
         }).catch(() => { setNotFound(true); setLoading(false); });
@@ -10592,6 +10596,7 @@ async function lookupBreach(query, forcedType = null) {
           </div>
 
           <div style={{ marginTop:20, fontSize:11, color:'rgba(255,255,255,0.15)', ...mono, letterSpacing:'0.08em' }}>searcher.bz</div>
+          <Cursor />
         </div>
       );
     }
