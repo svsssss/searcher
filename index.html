@@ -5897,7 +5897,15 @@ async function lookupBreach(query, forcedType = null) {
           <span style={{ fontSize:13, color:'var(--ink-mute)' }}>Recherche dans BrixHub…</span>
         </div>
       );
-      if (data.error) return null;
+      if (data.error) return (
+        <div style={{ margin:'0 0 16px', padding:'20px', borderRadius:16, border:'1px solid rgba(59,130,246,0.12)', background:'rgba(59,130,246,0.03)', fontFamily:"'Geist',sans-serif", textAlign:'center' }}>
+          <div style={{ fontSize:28, marginBottom:8 }}>🚗</div>
+          <div style={{ fontSize:13, fontWeight:600, color:'var(--ink)', marginBottom:4 }}>Aucun résultat BrixHub</div>
+          <div style={{ fontSize:12, color:'var(--ink-mute)' }}>
+            {data.type === 'plate' ? `Plaque "${data.query}" introuvable dans la base de données.` : data.error}
+          </div>
+        </div>
+      );
 
       const { results, meta } = data;
       const total   = meta.total || results.length;
@@ -6032,6 +6040,9 @@ async function lookupBreach(query, forcedType = null) {
     function ResultsPage({ query, results, loading, error, phoneResult, ipResult, whoisResult, shodanResult, personResult, emailResult, imageResult, decoderResult, usernameResult, tiktokResult, breachResult, hudsonResult, brixhubResult, steamResult, mcResult, config, onSearch, onTheme, onPricing, onPatchnote, onRedeem, onLeaderboard, onMiniGame, miniGameAvailable, credits, onBack, followSpeed, session, onLogout, onProfile, onAdmin, onBulk, onStaff }) {
       const [input, setInput] = useState(query);
       const [activeTab, setActiveTab] = useState('tout');
+      useEffect(() => {
+        if (looksLikePlate(query)) setActiveTab('identite');
+      }, [query]);
       const [onlineCount, setOnlineCount] = useState(() => {
         const cutoff = Date.now() - 3 * 60 * 1000;
         return loadLeaderboard().filter(e => (e.lastSeen||0) > cutoff).length;
